@@ -429,6 +429,9 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
   #panel-history,#panel-favorites,#panel-announce,#panel-calendar{
     overflow-y:auto !important;
     padding:10px !important;
+    height:calc(100dvh - 46px - 58px) !important;
+    justify-content:flex-start !important;
+    align-items:stretch !important;
   }
 
   /* Admin */
@@ -458,7 +461,7 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
 </div>
 
 <!-- LANDING PAGE -->
-<div class="screen active" id="screen-landing" style="overflow:hidden;background:#f7f3ee;display:flex;align-items:center;justify-content:center;position:relative">
+<div class="screen active" id="screen-landing" style="overflow:hidden;background:#f7f3ee;align-items:center;justify-content:center;position:relative">
 
 <style>
 #screen-landing{font-family:'Almarai',sans-serif;direction:rtl}
@@ -1612,7 +1615,7 @@ async function doLogin() {
   if (btn) btn.disabled = true;
   try {
     const _fbAuth = await waitFb();
-    await _fbAuth.signInWithEmailAndPassword(_fbAuth.auth, email, pass);
+    await signInWithEmailAndPassword(_fbAuth.auth, email, pass);
   } catch(e) {
     hideOv();
     if (btn) btn.disabled = false;
@@ -1841,7 +1844,7 @@ async function createAccount(name, email, phone='', paid=false, pass='') {
   showOv(t('creatingAcc'));
   try {
     const _fbc = await waitFb();
-    const uc = await _fbc.createUserWithEmailAndPassword(_fbc.auth, email, pass);
+    const uc = await createUserWithEmailAndPassword(_fbc.auth, email, pass);
     await fbSet(`users/${uc.user.uid}`, {
       name, email, phone, role:'user', active:true, paid,
       created: new Date().toISOString()
