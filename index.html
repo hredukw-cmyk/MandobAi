@@ -1,0 +1,3452 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>المرشد للمعاملات الحكومية</title>
+<meta name="description" content="النظام الذكي للإجراءات الحكومية الكويتية">
+<meta name="theme-color" content="#0d1117">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="المرشد للمعاملات الحكومية">
+<link rel="manifest" href="data:application/json,{%22name%22:%22%D9%85%D9%86%D8%A7%D8%AF%D9%8A%D8%A8%20%D8%A7%D9%84%D9%83%D9%88%D9%8A%D8%AA%22,%22short_name%22:%22%D9%85%D9%86%D8%A7%D8%AF%D9%8A%D8%A8%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%230d1117%22,%22theme_color%22:%22%230d1117%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230d1117'/%3E%3Ctext y='.9em' font-size='80'%3E%F0%9F%8F%9B%EF%B8%8F%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22192x192%22}]}">
+<link href="https://fonts.googleapis.com/css2?family=Almarai:wght@300;400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, query, where } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+// ================================================================
+// ⚠️  ضع إعدادات Firebase هنا
+// ================================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDetjqbv2zvC-Lqu1Cj9LFmnDOk4dfbpP0",
+  authDomain: "man-ai-6f4d6.firebaseapp.com",
+  projectId: "man-ai-6f4d6",
+  storageBucket: "man-ai-6f4d6.firebasestorage.app",
+  messagingSenderId: "206603849080",
+  appId: "1:206603849080:web:c11596dafa657a9c5f8c8d"
+};
+
+// ================================================================
+
+const app = initializeApp(FIREBASE_CONFIG);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+window._fb = { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc, query, where };
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if (!snap.exists()) { await signOut(auth); window.showScreen('landing'); return; }
+    const profile = snap.data();
+    if (!profile.active) { await signOut(auth); window.showScreen('landing'); return; }
+    window._currentUser = { uid: user.uid, ...profile };
+    window.onLoggedIn(profile);
+  } else {
+    window._currentUser = null;
+    const active = document.querySelector('.screen.active');
+    const activeId = active ? active.id : '';
+    if (!['screen-subscribe','screen-login','screen-landing'].includes(activeId)) {
+      window.showScreen && window.showScreen('landing');
+    }
+  }
+});
+
+window._firebaseReady = true;
+// Don't dispatch event here — init() will be called from regular script
+</script>
+<style>
+:root {
+  --navy:#07111f; --navy2:#0d1f38; --blue:#1a3a6e; --blue2:#2a5298;
+  --gold:#c9a84c; --gold2:#e8c97a; --green:#22c55e; --red:#ef4444;
+  --gray:#7a8fa6; --border:rgba(201,168,76,0.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-height:100vh;overflow-x:hidden}
+.screen{display:none;width:100%;min-height:100vh}
+.screen.active{display:flex}
+
+/* INIT */
+#screen-init{align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.spin0{width:48px;height:48px;border:3px solid rgba(201,168,76,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
+
+/* LOGIN / SUBSCRIBE shared */
+.auth-bg{align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(ellipse at 65% 0%,#1a3a6e33 0%,transparent 60%),
+             radial-gradient(ellipse at 15% 100%,#c9a84c15 0%,transparent 50%),var(--navy);
+  position:relative}
+.auth-box{width:100%;max-width:440px;background:linear-gradient(145deg,#0d1f38,#0a1628);
+  border:1px solid var(--border);border-radius:24px;overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,0.6)}
+.auth-hero{background:linear-gradient(135deg,var(--blue),#0d2a56);padding:28px;text-align:center;border-bottom:1px solid var(--border)}
+.auth-hero .ico{font-size:44px;margin-bottom:10px}
+.auth-hero h1{font-size:20px;font-weight:900;color:var(--gold2);margin-bottom:4px}
+.auth-hero p{font-size:13px;color:rgba(255,255,255,0.55);font-family:'Almarai',sans-serif}
+.trial-badge{background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);
+  border-radius:10px;padding:8px 14px;margin-top:14px;font-size:13px;color:#86efac;font-family:'Almarai',sans-serif}
+.auth-feats{padding:14px 22px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:7px}
+.feat{display:flex;align-items:center;gap:8px;font-size:13px;font-family:'Almarai',sans-serif;color:#c5cdd8}
+.auth-form{padding:20px 24px}
+.fg{margin-bottom:14px}
+.fg label{display:block;font-size:12px;color:var(--gray);margin-bottom:5px;font-family:'Almarai',sans-serif}
+.fg input{width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+  border-radius:10px;padding:11px 14px;color:#e8edf5;font-family:'Almarai',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+.fg input:focus{border-color:var(--gold)}
+.main-btn{width:100%;background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);
+  border:none;border-radius:11px;padding:13px;font-family:'Almarai',sans-serif;font-size:15px;
+  font-weight:700;cursor:pointer;transition:all .2s;box-shadow:0 4px 20px rgba(201,168,76,0.3)}
+.main-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(201,168,76,0.45)}
+.err-box{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#fca5a5;
+  border-radius:9px;padding:9px 13px;font-size:13px;font-family:'Almarai',sans-serif;margin-top:10px;display:none}
+.alt-link{text-align:center;margin-top:13px;font-size:13px;color:var(--gray);font-family:'Almarai',sans-serif}
+.alt-link a{color:var(--gold2);cursor:pointer}
+.lang-btn{position:absolute;top:16px;left:16px;background:rgba(255,255,255,0.06);
+  border:1px solid rgba(255,255,255,0.12);color:var(--gray);padding:5px 13px;
+  border-radius:8px;font-family:'Almarai',sans-serif;font-size:12px;cursor:pointer;transition:all .2s}
+.lang-btn:hover{background:rgba(255,255,255,0.1);color:#e8edf5}
+
+/* SUCCESS */
+#screen-success{align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(ellipse at 50% 30%,#16633344 0%,transparent 60%),var(--navy)}
+.suc-box{width:100%;max-width:400px;background:linear-gradient(145deg,#0d1f38,#0a1628);
+  border:1px solid rgba(34,197,94,0.25);border-radius:24px;padding:36px;text-align:center;
+  box-shadow:0 30px 80px rgba(0,0,0,0.6)}
+.suc-box h2{font-size:20px;font-weight:900;color:#86efac;margin-bottom:8px}
+.suc-box p{font-size:13px;color:var(--gray);font-family:'Almarai',sans-serif;line-height:1.8;margin-bottom:6px}
+.creds{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);
+  border-radius:12px;padding:16px;margin:16px 0;text-align:right}
+.cred-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.cred-row:last-child{margin-bottom:0}
+.cred-lbl{font-size:12px;color:var(--gray);font-family:'Almarai',sans-serif}
+.cred-val{font-size:13px;color:var(--gold2);font-family:'Almarai',sans-serif;font-weight:600;direction:ltr}
+
+/* PAYWALL */
+#screen-paywall{align-items:center;justify-content:center;padding:20px;
+  background:radial-gradient(ellipse at 50% 0%,#7f1d1d33 0%,transparent 60%),var(--navy)}
+.pw-box{width:100%;max-width:420px;background:linear-gradient(145deg,#0d1f38,#0a1628);
+  border:1px solid rgba(239,68,68,0.2);border-radius:24px;padding:36px;text-align:center;
+  box-shadow:0 30px 80px rgba(0,0,0,0.6)}
+.pw-box h2{font-size:20px;font-weight:900;color:#fca5a5;margin-bottom:10px}
+.pw-box p{font-size:14px;color:var(--gray);font-family:'Almarai',sans-serif;line-height:1.8;margin-bottom:6px}
+.pw-feats{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);
+  border-radius:12px;padding:14px 16px;margin:16px 0;text-align:right;display:flex;flex-direction:column;gap:7px}
+.pw-feat{font-size:13px;font-family:'Almarai',sans-serif;color:#c5cdd8}
+
+/* APP */
+#screen-app{flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
+.topbar{background:linear-gradient(135deg,var(--navy2),#0a1628);border-bottom:1px solid var(--border);
+  padding:0 14px;height:50px;display:flex;align-items:center;gap:10px;flex-shrink:0;
+  box-shadow:0 2px 20px rgba(0,0,0,0.3)}
+.tb-logo{display:flex;align-items:center;gap:9px}
+.tb-logo .ico{width:32px;height:32px;background:linear-gradient(135deg,var(--gold),var(--gold2));
+  border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px}
+.tb-logo span{font-size:14px;font-weight:900;color:var(--gold2)}
+.tb-tabs{display:flex;gap:3px;margin-right:14px}
+.tab-btn{background:transparent;border:1px solid transparent;color:var(--gray);padding:5px 13px;
+  border-radius:9px;font-family:'Almarai',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;gap:5px}
+.tab-btn:hover{color:var(--gold2);background:rgba(201,168,76,0.08)}
+.tab-btn.active{background:rgba(201,168,76,0.12);border-color:var(--border);color:var(--gold2)}
+.admin-only{display:none}
+.tb-right{margin-right:auto;display:flex;align-items:center;gap:8px}
+.user-chip{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);border-radius:18px;padding:3px 11px;
+  font-size:12px;color:var(--gray);font-family:'Almarai',sans-serif}
+.role-badge{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);
+  padding:2px 7px;border-radius:6px;font-size:10px;font-weight:700}
+.trial-chip{background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);
+  color:#86efac;padding:2px 9px;border-radius:6px;font-size:10px;font-family:'Almarai',sans-serif}
+.logout-btn{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);
+  color:#fca5a5;padding:4px 11px;border-radius:9px;font-family:'Almarai',sans-serif;
+  font-size:12px;cursor:pointer;transition:all .2s}
+.logout-btn:hover{background:rgba(239,68,68,0.2)}
+.sm-btn{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);
+  color:var(--gray);padding:4px 11px;border-radius:8px;font-family:'Almarai',sans-serif;
+  font-size:12px;cursor:pointer;transition:all .2s}
+.sm-btn:hover{color:#e8edf5;background:rgba(255,255,255,0.09)}
+
+/* PANELS */
+.panel{display:none;flex:1;overflow:hidden;min-height:0;width:100%}
+.panel.active{display:flex}
+
+/* All scrollable panels */
+#panel-history,#panel-favorites,#panel-announce,#panel-calendar,#panel-templates-user{
+  flex-direction:column;overflow-y:auto;padding:12px;justify-content:flex-start;align-items:stretch;
+}
+
+/* BOTTOM NAV - mobile only */
+#bottom-nav{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;
+  height:60px;
+  background:linear-gradient(180deg,#0a1420,#070d15);
+  border-top:1px solid var(--border);
+  z-index:50;
+  flex-direction:row;align-items:center;justify-content:space-around;
+  padding:0 4px;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.bn-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;flex:1;padding:6px 2px;cursor:pointer;
+  border:none;background:transparent;color:var(--gray);
+  font-family:'Almarai',sans-serif;transition:all .2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.bn-btn .bn-ico{font-size:24px;line-height:1}
+.bn-btn .bn-lbl{font-size:10px;line-height:1}
+.bn-btn.active{color:var(--gold2)}
+.bn-btn .bell-dot{width:7px;height:7px;background:#ef4444;border-radius:50%;position:absolute;top:2px;right:2px;display:none}
+
+/* CHAT */
+#panel-chat{flex-direction:column}
+.chat-bar{background:rgba(255,255,255,0.03);border-bottom:1px solid var(--border);
+  padding:6px 18px;display:flex;align-items:center;gap:9px;font-size:12px;
+  color:var(--gray);font-family:'Almarai',sans-serif;flex-shrink:0}
+.chip{padding:2px 9px;border-radius:7px;font-size:11px;border:1px solid}
+.msgs{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:13px;scroll-behavior:smooth}
+.msgs::-webkit-scrollbar{width:4px}
+.msgs::-webkit-scrollbar-thumb{background:rgba(201,168,76,0.25);border-radius:2px}
+.msg{display:flex;align-items:flex-start;gap:9px;max-width:88%;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.user{margin-right:auto;flex-direction:row-reverse}
+.msg.bot{margin-left:auto}
+.av{width:31px;height:31px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.msg.user .av{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy)}
+.msg.bot .av{background:linear-gradient(135deg,var(--blue),var(--blue2));border:1px solid var(--border)}
+.bubble{padding:10px 14px;border-radius:13px;font-size:14px;line-height:1.8;font-family:'Almarai',sans-serif}
+.msg.user .bubble{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;
+  border-bottom-right-radius:4px;box-shadow:0 4px 15px rgba(26,58,110,0.4)}
+.msg.bot .bubble{background:#fff;color:#1a1a2e;border-bottom-left-radius:4px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.15)}
+.msg.bot .bubble a{color:var(--blue2);font-weight:600}
+.src-tag{font-size:10px;color:rgba(0,0,0,0.3);margin-top:4px;font-family:'Almarai',sans-serif}
+.msg-actions{display:flex;gap:6px;margin-top:6px;padding-right:2px}
+.act-btn{background:rgba(0,0,0,0.06);border:1px solid rgba(0,0,0,0.1);border-radius:7px;
+  padding:3px 8px;font-size:13px;cursor:pointer;transition:all .2s;line-height:1}
+.act-btn:hover{background:rgba(0,0,0,0.12);transform:scale(1.1)}
+.loc-card{background:rgba(26,58,110,0.12);border:1px solid rgba(26,58,110,0.3);
+  border-radius:9px;padding:9px 12px;margin-top:8px}
+.loc-card h4{font-size:12px;color:var(--blue2);font-weight:700;margin-bottom:3px}
+.loc-card p{font-size:11px;color:rgba(0,0,0,0.5);font-family:'Almarai',sans-serif;margin-bottom:2px}
+.loc-card a{color:var(--blue2);font-size:11px;font-weight:600}
+.dots{display:flex;gap:5px;padding:4px 0}
+.dots span{width:7px;height:7px;border-radius:50%;background:var(--gray);animation:ty 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes ty{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-7px);opacity:1}}
+.welcome{text-align:center;padding:18px}
+.welcome h2{font-size:18px;font-weight:900;color:var(--gold2);margin-bottom:8px}
+.welcome p{font-size:13px;color:var(--gray);font-family:'Almarai',sans-serif}
+.qqs{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;margin-top:13px}
+.qbtn{background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--gold2);
+  padding:6px 13px;border-radius:18px;font-size:12px;font-family:'Almarai',sans-serif;
+  cursor:pointer;transition:all .2s}
+.qbtn:hover{background:rgba(201,168,76,0.12);border-color:var(--gold);transform:translateY(-2px)}
+.input-area{background:linear-gradient(0deg,var(--navy),var(--navy2));border-top:1px solid var(--border);
+  padding:12px 16px;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+.input-wrap{flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+  border-radius:13px;padding:11px 14px;transition:border-color .2s}
+.input-wrap:focus-within{border-color:var(--gold)}
+#user-input{background:transparent;border:none;outline:none;color:#e8edf5;
+  font-family:'Almarai',sans-serif;font-size:15px;width:100%;resize:none;
+  min-height:48px;max-height:120px;line-height:1.6}
+#user-input::placeholder{color:rgba(122,143,166,0.5)}
+.send-btn{width:42px;height:42px;background:linear-gradient(135deg,var(--gold),var(--gold2));
+  border:none;border-radius:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:17px;flex-shrink:0;transition:all .2s;box-shadow:0 4px 15px rgba(201,168,76,0.3)}
+.send-btn:hover{transform:scale(1.05)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+
+/* ADMIN */
+#panel-admin{flex-direction:row;background:var(--navy);overflow:hidden;align-items:flex-start}
+.sidebar{width:200px;flex-shrink:0;background:var(--navy2);border-left:1px solid var(--border);
+  padding:14px 0;display:flex;flex-direction:column;gap:2px}
+.si{display:flex;align-items:center;gap:9px;padding:9px 16px;cursor:pointer;color:var(--gray);
+  font-size:13px;font-family:'Almarai',sans-serif;transition:all .2s;border-right:3px solid transparent}
+.si:hover{color:var(--gold2);background:rgba(201,168,76,0.05)}
+.si.active{color:var(--gold2);background:rgba(201,168,76,0.08);border-right-color:var(--gold)}
+.ac{flex:1;overflow-y:auto;padding:14px;display:block;height:100%}
+.sub-panel{display:none;width:100%}
+.sub-panel.active{display:block;width:100%}
+.sec-title{font-size:15px;font-weight:700;color:var(--gold2);margin-bottom:12px;font-family:'Almarai',sans-serif}
+.card{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.sec-title{font-size:17px;font-weight:900;color:var(--gold2);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:22px}
+.stat-card{background:linear-gradient(145deg,var(--navy2),#0a1628);border:1px solid var(--border);
+  border-radius:13px;padding:16px;text-align:center}
+.stat-num{font-size:26px;font-weight:900;color:var(--gold2)}
+.stat-lbl{font-size:11px;color:var(--gray);font-family:'Almarai',sans-serif;margin-top:3px}
+.card{background:linear-gradient(145deg,var(--navy2),#0a1628);border:1px solid var(--border);
+  border-radius:13px;padding:18px;margin-bottom:16px}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{background:rgba(201,168,76,0.1);color:var(--gold2);padding:8px 12px;font-size:12px;
+  font-weight:700;text-align:right;border-bottom:1px solid var(--border)}
+.tbl td{padding:9px 12px;font-size:12px;font-family:'Almarai',sans-serif;
+  border-bottom:1px solid rgba(255,255,255,0.04);color:#c5cdd8;vertical-align:middle}
+.tbl tr:hover td{background:rgba(255,255,255,0.02)}
+.bdg{display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700}
+.bdg-on{background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.3)}
+.bdg-off{background:rgba(239,68,68,0.12);color:#fca5a5;border:1px solid rgba(239,68,68,0.25)}
+.bdg-admin{background:rgba(201,168,76,0.15);color:var(--gold2);border:1px solid var(--border)}
+.bdg-user{background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)}
+.bdg-trial{background:rgba(34,197,94,0.12);color:#86efac;border:1px solid rgba(34,197,94,0.25)}
+.bdg-paid{background:rgba(201,168,76,0.15);color:var(--gold2);border:1px solid var(--border)}
+.bdg-expired{background:rgba(239,68,68,0.12);color:#fca5a5;border:1px solid rgba(239,68,68,0.25)}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fld{margin-bottom:11px}
+.fld label{display:block;font-size:12px;color:var(--gray);margin-bottom:4px;font-family:'Almarai',sans-serif}
+.fld input,.fld select,.fld textarea{width:100%;background:rgba(255,255,255,0.05);
+  border:1px solid rgba(255,255,255,0.1);border-radius:9px;padding:8px 12px;color:#e8edf5;
+  font-family:'Almarai',sans-serif;font-size:13px;outline:none;transition:border-color .2s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--gold)}
+.fld select option{background:var(--navy2)}
+.fld textarea{resize:vertical;min-height:65px}
+.btn{padding:8px 18px;border-radius:9px;border:none;font-family:'Almarai',sans-serif;
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);
+  box-shadow:0 4px 15px rgba(201,168,76,0.25)}
+.btn-gold:hover{transform:translateY(-2px)}
+.btn-red{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)}
+.btn-ghost{background:rgba(255,255,255,0.05);color:var(--gray);border:1px solid rgba(255,255,255,0.1)}
+.btn-ghost:hover{background:rgba(255,255,255,0.09);color:#e8edf5}
+.arow{display:flex;gap:6px;flex-wrap:wrap}
+.upload-zone{border:2px dashed rgba(201,168,76,0.3);border-radius:13px;padding:26px;
+  text-align:center;cursor:pointer;transition:all .2s;margin-bottom:13px}
+.upload-zone:hover{border-color:var(--gold);background:rgba(201,168,76,0.04)}
+.upload-zone h3{color:var(--gold2);font-size:15px;margin-bottom:5px}
+.upload-zone p{color:var(--gray);font-size:12px;font-family:'Almarai',sans-serif}
+.divider{height:1px;background:var(--border);margin:14px 0}
+.info-note{background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.2);
+  border-radius:9px;padding:11px 13px;font-size:13px;font-family:'Almarai',sans-serif;
+  color:#c5cdd8;line-height:1.7;margin-bottom:13px}
+.info-note code{background:rgba(201,168,76,0.15);color:var(--gold2);padding:1px 6px;border-radius:4px;font-size:12px}
+
+/* mode toggle */
+.mode-toggle{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.mode-lbl{font-size:13px;font-family:'Almarai',sans-serif;color:var(--gray)}
+
+/* Toast & Overlay */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff;
+  padding:10px 20px;border-radius:10px;font-size:13px;font-family:'Almarai',sans-serif;
+  box-shadow:0 8px 30px rgba(0,0,0,0.4);z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.ok{background:linear-gradient(135deg,#166534,#16a34a)}
+.toast.err{background:linear-gradient(135deg,#7f1d1d,#dc2626)}
+.ov{position:fixed;inset:0;background:rgba(7,17,31,0.88);display:none;align-items:center;
+  justify-content:center;flex-direction:column;gap:12px;z-index:200}
+.ov.show{display:flex}
+.spin{width:42px;height:42px;border:3px solid rgba(201,168,76,0.2);border-top-color:var(--gold);
+  border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin-txt{color:var(--gold2);font-size:14px;font-family:'Almarai',sans-serif}
+
+/* ── LANDING PAGE ── */
+.land-feat-card{background:linear-gradient(145deg,var(--navy2),#0a1628);border:1px solid var(--border);border-radius:16px;padding:22px;transition:all .25s}
+.land-feat-card:hover{border-color:var(--gold);transform:translateY(-4px);box-shadow:0 12px 40px rgba(201,168,76,0.15)}
+.land-feat-ico{font-size:30px;margin-bottom:12px}
+.land-feat-card h3{font-size:15px;font-weight:700;color:var(--gold2);margin-bottom:7px}
+.land-feat-card p{font-size:13px;color:var(--gray);font-family:'Almarai',sans-serif;line-height:1.7}
+
+/* ── BELL ── */
+.bell-btn{position:relative;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:var(--gray);width:34px;height:34px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .2s}
+.bell-btn:hover{color:var(--gold2);background:rgba(201,168,76,0.1)}
+.bell-badge{position:absolute;top:-5px;right:-5px;background:var(--red);color:#fff;font-size:10px;font-weight:700;width:17px;height:17px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid var(--navy);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}
+
+.img-btn{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--gray);width:36px;height:36px;border-radius:9px;cursor:pointer;font-size:16px;transition:all .2s;flex-shrink:0}
+.img-btn:hover{color:var(--gold2);background:rgba(201,168,76,0.1)}
+.img-preview{max-width:180px;border-radius:10px;margin-bottom:8px;display:block;cursor:pointer}
+.hist-item{background:linear-gradient(145deg,var(--navy2),#0a1628);border:1px solid var(--border);border-radius:12px;padding:13px 15px;margin-bottom:10px;cursor:pointer;transition:all .2s}
+.hist-item:hover{border-color:var(--gold);transform:translateX(-2px)}
+.hist-q{font-size:13px;font-weight:600;color:#e8edf5;margin-bottom:5px}
+.hist-a{font-size:12px;color:var(--gray);font-family:'Almarai',sans-serif;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist-date{font-size:11px;color:rgba(122,143,166,0.4);margin-top:6px;font-family:'Almarai',sans-serif}
+.fav-item{background:linear-gradient(145deg,var(--navy2),#0a1628);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.fav-item .fav-text{font-size:13px;color:#e8edf5;line-height:1.7;white-space:pre-wrap}
+.fav-actions{display:flex;gap:7px;margin-top:9px}
+.logout-confirm{position:fixed;inset:0;background:rgba(7,17,31,0.85);z-index:500;display:none;align-items:center;justify-content:center}
+.logout-confirm.show{display:flex}
+.logout-box{background:linear-gradient(145deg,#0d1f38,#0a1628);border:1px solid var(--border);border-radius:18px;padding:28px 32px;text-align:center;max-width:300px}
+.logout-box h3{font-size:16px;font-weight:700;color:#e8edf5;margin-bottom:8px}
+.logout-box p{font-size:13px;color:var(--gray);font-family:'Almarai',sans-serif;margin-bottom:20px}
+.logout-box .btns{display:flex;gap:9px;justify-content:center}
+.ann-item{background:linear-gradient(145deg,var(--navy2),#0a1628);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px;transition:all .2s}
+.ann-item.unread{border-color:rgba(201,168,76,0.4);background:linear-gradient(145deg,#0d2240,#0a1628)}
+.ann-tag{display:inline-block;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:8px;font-family:'Almarai',sans-serif}
+.ann-urgent{background:rgba(239,68,68,0.15);color:#fca5a5;border:1px solid rgba(239,68,68,0.3)}
+.ann-info{background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3)}
+.ann-news{background:rgba(34,197,94,0.12);color:#86efac;border:1px solid rgba(34,197,94,0.25)}
+.ann-img{width:100%;border-radius:10px;margin-top:10px;max-height:280px;object-fit:cover;cursor:pointer}
+
+/* ── CALENDAR ── */
+.cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cal-nav{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--gray);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.cal-nav:hover{color:var(--gold2);border-color:var(--border)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:16px}
+.cal-day-lbl{text-align:center;font-size:11px;color:var(--gray);font-family:'Almarai',sans-serif;padding:4px 0;font-weight:700}
+.cal-day{min-height:36px;border-radius:8px;display:flex;flex-direction:column;align-items:center;padding:4px 2px;cursor:pointer;transition:all .2s;border:1px solid transparent;font-size:12px;color:var(--gray)}
+.cal-day:hover{background:rgba(201,168,76,0.08);border-color:var(--border);color:var(--gold2)}
+.cal-day.today{background:rgba(201,168,76,0.12);border-color:var(--gold);color:var(--gold2);font-weight:700}
+.cal-day.has-task::after{content:'';display:block;width:5px;height:5px;border-radius:50%;background:var(--gold2);margin-top:2px}
+.cal-day.selected{background:linear-gradient(135deg,var(--gold),var(--gold2));color:var(--navy);font-weight:700}
+.cal-day.other-month{opacity:.3}
+.task-item{background:linear-gradient(145deg,var(--navy2),#0a1628);border:1px solid var(--border);border-radius:11px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:11px}
+.task-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.task-done .task-text{opacity:.45;text-decoration:line-through}
+
+@media(max-width:600px){
+  /* App layout - bottom nav */
+  #screen-app{flex-direction:column;height:100dvh;overflow:hidden}
+  .topbar{padding:0 10px;height:46px;gap:6px;flex-shrink:0}
+  .tb-logo span{display:none}
+  .tb-logo .ico{width:26px;height:26px;font-size:13px}
+  .user-chip{display:none}
+  .sm-btn{font-size:11px;padding:3px 8px}
+  .trial-chip{font-size:9px;padding:2px 6px}
+  .tb-right{gap:4px}
+
+  /* Hide top tabs on mobile */
+  .tb-tabs{display:none}
+
+  /* Bottom nav */
+  #bottom-nav{display:flex !important;height:58px}
+
+  /* Panels fill exactly remaining height */
+  .panel{
+    height:calc(100dvh - 46px - 58px);
+    max-height:calc(100dvh - 46px - 58px);
+    overflow:hidden;
+  }
+  .panel.active{display:flex}
+  #panel-chat{height:calc(100dvh - 46px - 58px)}
+
+  /* Scrollable panels */
+  #panel-history,#panel-favorites,#panel-announce,#panel-calendar{
+    overflow-y:auto !important;
+    padding:10px !important;
+  }
+
+  /* Admin */
+  #panel-admin{height:calc(100dvh - 46px - 58px);overflow:hidden}
+  .sidebar{width:44px;overflow:hidden}.si span{display:none}
+  .ac{overflow-y:auto;padding:8px;height:100%}
+
+  /* Forms */
+  .frow{grid-template-columns:1fr}
+
+  /* Auth */
+  .auth-box{border-radius:0;min-height:100dvh}
+
+  /* Chat input bigger */
+  .input-area{padding:8px 10px;gap:6px}
+  #user-input{font-size:15px;min-height:44px}
+  .msgs{padding:10px}
+}
+</style>
+</head>
+<body>
+
+<!-- INIT - hidden by default now -->
+<div class="screen" id="screen-init">
+  <div class="spin0"></div>
+  <div style="color:var(--gold2);font-size:14px;font-family:'Almarai',sans-serif;margin-top:12px" id="init-txt">جاري التحميل... / Loading...</div>
+</div>
+
+<!-- LANDING PAGE -->
+<div class="screen active" id="screen-landing" style="overflow:hidden;background:#f7f3ee;display:flex;align-items:center;justify-content:center;position:relative">
+
+<style>
+#screen-landing{font-family:'Almarai',sans-serif;direction:rtl}
+#screen-landing *{box-sizing:border-box;margin:0;padding:0}
+
+#screen-landing::before{
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse at 20% 50%,rgba(184,150,62,0.08),transparent 60%),
+    radial-gradient(ellipse at 80% 20%,rgba(45,106,79,0.05),transparent 50%);
+  pointer-events:none;
+}
+
+/* الشعار */
+.ll-logo{
+  position:absolute;top:22px;right:22px;
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;font-weight:700;color:#1a1f2e;
+  animation:llup .6s ease both;z-index:2;
+}
+.ll-logo-dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#c9a84c,#e8c97a)}
+
+/* أزرار NAV */
+.ll-nav{
+  position:absolute;top:18px;left:22px;
+  display:flex;gap:8px;z-index:2;
+  animation:llup .6s .05s ease both;
+}
+.ll-btn{font-family:'Almarai',sans-serif;font-size:12px;font-weight:700;padding:8px 18px;border-radius:100px;cursor:pointer;transition:all .2s;border:none}
+.ll-outline{background:transparent;border:1.5px solid rgba(26,31,46,0.15);color:#1a1f2e}
+.ll-outline:hover{border-color:#c9a84c;color:#b8963e}
+.ll-fill{background:#1a1f2e;color:#fff}
+.ll-fill:hover{background:#252b3b;transform:translateY(-1px)}
+
+/* المركز */
+.ll-center{
+  text-align:center;padding:0 24px;
+  position:relative;z-index:1;
+  max-width:480px;width:100%;
+}
+
+.ll-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:11px;color:#2d6a4f;font-weight:700;
+  background:rgba(45,106,79,0.08);border:1px solid rgba(45,106,79,0.18);
+  border-radius:100px;padding:4px 14px;margin-bottom:24px;
+  animation:llup .6s .1s ease both;
+}
+
+.ll-h1{
+  font-size:clamp(36px,9vw,56px);font-weight:800;
+  color:#1a1f2e;line-height:1.2;margin-bottom:12px;
+  animation:llup .6s .18s ease both;
+}
+.ll-h1 span{
+  background:linear-gradient(135deg,#b8963e,#e8c97a);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+
+.ll-sub{
+  font-size:14px;color:#6b7280;font-weight:300;
+  line-height:1.8;margin-bottom:32px;
+  animation:llup .6s .25s ease both;
+}
+
+.ll-actions{
+  display:flex;gap:10px;justify-content:center;flex-wrap:wrap;
+  animation:llup .6s .32s ease both;
+}
+.ll-primary{
+  font-family:'Almarai',sans-serif;font-size:14px;font-weight:700;
+  padding:14px 32px;border-radius:100px;
+  background:#1a1f2e;color:#fff;border:none;cursor:pointer;
+  transition:all .25s;box-shadow:0 4px 24px rgba(26,31,46,0.2);
+}
+.ll-primary:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(26,31,46,0.3)}
+.ll-secondary{
+  font-family:'Almarai',sans-serif;font-size:14px;font-weight:400;
+  padding:14px 24px;border-radius:100px;
+  background:transparent;border:1.5px solid rgba(26,31,46,0.12);
+  color:#1a1f2e;cursor:pointer;transition:all .2s;
+}
+.ll-secondary:hover{border-color:#c9a84c;color:#b8963e}
+
+/* دوائر */
+.ll-circle{
+  position:absolute;border-radius:50%;
+  border:1px solid rgba(184,150,62,0.08);
+  pointer-events:none;
+}
+.ll-c1{width:400px;height:400px;bottom:-150px;left:-150px;animation:llspin 22s linear infinite}
+.ll-c2{width:260px;height:260px;top:-80px;right:-80px;border-color:rgba(45,106,79,0.06);animation:llspin 16s linear infinite reverse}
+
+/* شريط الأرقام */
+.ll-strip{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:14px 24px;
+  display:flex;align-items:center;justify-content:center;gap:28px;
+  border-top:1px solid rgba(184,150,62,0.1);
+  animation:llup .6s .4s ease both;z-index:2;
+}
+.ll-si{display:flex;flex-direction:column;align-items:center;gap:2px}
+.ll-sn{font-size:16px;font-weight:800;color:#c9a84c}
+.ll-sl{font-size:10px;color:#9ca3af;font-weight:300}
+.ll-sd{width:1px;height:28px;background:rgba(184,150,62,0.15)}
+
+@keyframes llup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes llspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+
+@media(max-width:480px){
+  .ll-logo span{display:none}
+  .ll-btn{padding:7px 12px;font-size:11px}
+  .ll-h1{font-size:36px}
+  .ll-strip{gap:16px}
+  .ll-sn{font-size:14px}
+}
+</style>
+
+<div class="ll-circle ll-c1"></div>
+<div class="ll-circle ll-c2"></div>
+
+<div class="ll-logo">
+  <div class="ll-logo-dot"></div>
+  <span id="ln-brand">المرشد للمعاملات</span>
+</div>
+
+<div class="ll-nav">
+  <button class="ll-btn ll-outline" onclick="toggleLang()" id="land-lang-btn">EN</button>
+  <button class="ll-btn ll-outline" onclick="showScreen('login')" id="ln-signin">دخول</button>
+  <button class="ll-btn ll-fill" onclick="showScreen('subscribe')" id="ln-try">جرّب مجاناً</button>
+</div>
+
+<div class="ll-center">
+  <div class="ll-badge">🇰🇼 <span id="ln-badge">الكويت</span></div>
+  <h1 class="ll-h1"><span id="ln-h1-line1">كل معاملة</span><br><span id="ln-h1-line2">في ثوانٍ</span></h1>
+  <p class="ll-sub" id="ln-sub">اسأل عن أي إجراء حكومي<br>واحصل على خطوات دقيقة فوراً</p>
+  <div class="ll-actions">
+    <button class="ll-primary" onclick="showScreen('subscribe')" id="ln-cta">ابدأ التجربة المجانية</button>
+    <button class="ll-secondary" onclick="showScreen('login')" id="ln-login2">تسجيل الدخول</button>
+  </div>
+</div>
+
+<div class="ll-strip">
+  <div class="ll-si"><div class="ll-sn" id="ls1">120K+</div><div class="ll-sl" id="ls1l">معلومة حقيقية</div></div>
+  <div class="ll-sd"></div>
+  <div class="ll-si"><div class="ll-sn" id="ls2">35+</div><div class="ll-sl" id="ls2l">جهة حكومية</div></div>
+  <div class="ll-sd"></div>
+  <div class="ll-si"><div class="ll-sn" id="ls3">فوري</div><div class="ll-sl" id="ls3l">رد في ثوانٍ</div></div>
+</div>
+
+</div><!-- end screen-landing -->
+
+<!-- SUBSCRIBE -->
+<div class="screen auth-bg" id="screen-subscribe">
+  <button class="lang-btn" onclick="toggleLang()" id="sub-lang-btn">EN</button>
+  <div class="auth-box">
+    <div class="auth-hero">
+      <div class="ico">🏛️</div>
+      <h1 id="sub-title">المرشد للمعاملات الحكومية</h1>
+      <p id="sub-tag">خبرة آلاف المناديب في سؤال واحد</p>
+      <div class="trial-badge" id="trial-badge">🎁 جرّب مجاناً 10 أيام — بدون بطاقة</div>
+    </div>
+    <div class="auth-feats">
+      <div class="feat">✅ <span id="f1">إجابات فورية عن الإجراءات الحكومية</span></div>
+      <div class="feat">✅ <span id="f2">خبرة حقيقية من المرشد للمعاملات الحكومية</span></div>
+      <div class="feat">✅ <span id="f3">مواقع وروابط الجهات الحكومية</span></div>
+      <div class="feat">✅ <span id="f4">تحديثات يومية بالأخبار الجديدة</span></div>
+    </div>
+    <div class="auth-form">
+      <div class="fg"><label id="lbl-name">الاسم الكامل</label><input type="text" id="sub-name" placeholder="محمد أحمد" /></div>
+      <div class="fg"><label id="lbl-email">البريد الإلكتروني</label><input type="email" id="sub-email" placeholder="example@email.com" /></div>
+      <div class="fg"><label id="lbl-phone">رقم الهاتف</label><input type="tel" id="sub-phone" placeholder="+965 XXXXXXXX" /></div>
+      <div class="fg"><label id="lbl-sub-pass">كلمة المرور</label><input type="password" id="sub-pass" placeholder="8 أحرف على الأقل" /></div>
+      <div class="fg"><label id="lbl-sub-pass2">تأكيد كلمة المرور</label><input type="password" id="sub-pass2" placeholder="أعد كتابة كلمة المرور" onkeydown="if(event.key==='Enter')goToTrial()" /></div>
+      <button class="main-btn" onclick="goToTrial()" id="sub-btn">🎁 ابدأ التجربة المجانية</button>
+      <div class="err-box" id="sub-err">خطأ</div>
+      <div class="alt-link"><span id="have-acc">عندك حساب؟</span> <a onclick="showScreen('login')" id="go-login">تسجيل الدخول</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="screen auth-bg" id="screen-login">
+  <button class="lang-btn" onclick="toggleLang()" id="login-lang-btn">EN</button>
+  <div class="auth-box">
+    <div class="auth-hero">
+      <div class="ico">🏛️</div>
+      <h1 id="login-title">المرشد للمعاملات الحكومية</h1>
+      <p id="login-tag">النظام الذكي للإجراءات الحكومية</p>
+    </div>
+    <div class="auth-form" style="padding-top:24px">
+      <div class="fg"><label id="lbl-login-email">البريد الإلكتروني</label><input type="email" id="login-email" placeholder="example@email.com" /></div>
+      <div class="fg"><label id="lbl-login-pass">كلمة المرور</label><input type="password" id="login-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" /></div>
+      <button class="main-btn" onclick="doLogin()" id="login-btn">دخول →</button>
+      <div id="fb-status" style="text-align:center;font-size:11px;color:rgba(201,168,76,0.5);font-family:'Almarai',sans-serif;margin-top:6px;display:none">⏳ جاري الاتصال...</div>
+      <div class="err-box" id="login-err">بيانات غلط</div>
+      <div style="text-align:center;margin-top:4px"><a onclick="doForgotPass()" style="font-size:12px;color:rgba(200,168,75,0.7);cursor:pointer;text-decoration:none;font-family:'Almarai',sans-serif" id="forgot-link">نسيت كلمة المرور؟</a></div>
+      <div class="alt-link"><span id="no-acc">مش عندك حساب؟</span> <a onclick="showScreen('subscribe')" id="go-sub">جرّب مجاناً</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div class="screen" id="screen-success">
+  <div class="suc-box">
+    <div style="font-size:50px;margin-bottom:14px">🎉</div>
+    <h2 id="suc-title">تم إنشاء حسابك!</h2>
+    <p id="suc-p1">لديك 10 أيام مجانية — بيانات دخولك:</p>
+    <div class="creds">
+      <div class="cred-row"><div class="cred-val" id="suc-email">—</div><div class="cred-lbl" id="suc-lbl-email">الإيميل</div></div>
+      <div class="cred-row"><div class="cred-val" id="suc-pass">—</div><div class="cred-lbl" id="suc-lbl-pass">كلمة المرور</div></div>
+    </div>
+    <p style="font-size:11px;color:rgba(122,143,166,0.6)" id="suc-email-note">📧 تم إرسال هذه البيانات على إيميلك</p>
+    <button class="main-btn" onclick="doLoginAfterSuccess()" style="margin-top:14px" id="suc-btn">دخول للنظام ←</button>
+  </div>
+</div>
+
+<!-- PAYWALL -->
+<div class="screen" id="screen-paywall">
+  <div class="pw-box">
+    <div style="font-size:50px;margin-bottom:14px">🔒</div>
+    <h2 id="pw-title">انتهت فترة التجربة المجانية</h2>
+    <p id="pw-p1">للاستمرار في استخدام النظام، يرجى الاشتراك بـ <strong style="color:var(--gold2)" id="pw-price">5</strong> <span id="pw-curr">دينار كويتي</span> / <span id="pw-month">شهرياً</span></p>
+    <div class="pw-feats">
+      <div class="pw-feat">✅ <span id="pw-f1">وصول كامل لكل الإجراءات</span></div>
+      <div class="pw-feat">✅ <span id="pw-f2">تحديثات يومية</span></div>
+      <div class="pw-feat">✅ <span id="pw-f3">خبرة آلاف المناديب</span></div>
+    </div>
+    <button class="main-btn" onclick="showPayModal()" id="pw-btn">💳 اشترك الآن</button>
+    <div style="margin-top:14px;font-size:12px;color:rgba(122,143,166,0.5)">
+      <a onclick="doLogout()" style="cursor:pointer" id="pw-logout">خروج</a>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="screen" id="screen-app">
+  <div class="topbar">
+    <div class="tb-logo"><div class="ico">🏛️</div><span id="tb-name">المرشد للمعاملات الحكومية</span></div>
+    <div class="tb-tabs">
+      <button class="tab-btn active" onclick="switchPanel('chat')" id="tab-chat">💬 <span id="tab-chat-lbl">المساعد</span></button>
+      <button class="tab-btn" onclick="switchPanel('history')" id="tab-history">🕐 <span id="tab-history-lbl">السجل</span></button>
+      <button class="tab-btn" onclick="switchPanel('favorites')" id="tab-favorites">⭐ <span id="tab-favorites-lbl">المفضلة</span></button>
+      <button class="tab-btn" onclick="switchPanel('announce')" id="tab-announce">📢 <span id="tab-announce-lbl">الإعلانات</span></button>
+      <button class="tab-btn" onclick="switchPanel('calendar')" id="tab-calendar">📅 <span id="tab-calendar-lbl">مهامي</span></button>
+      <button class="tab-btn admin-only" onclick="switchPanel('admin')" id="tab-admin">⚙️ <span id="tab-admin-lbl">لوحة التحكم</span></button>
+    </div>
+    <div class="tb-right">
+      <button class="bell-btn" onclick="switchPanel('announce')" id="bell-btn" title="الإعلانات" style="display:none">
+        🔔<span class="bell-badge" id="bell-badge" style="display:none">0</span>
+      </button>
+      <span class="trial-chip" id="trial-days-chip" style="display:none"></span>
+      <div class="user-chip"><span id="tb-user">—</span><span class="role-badge" id="tb-role">—</span></div>
+      <button class="sm-btn" onclick="toggleLang()" id="app-lang-btn">EN</button>
+      <button class="sm-btn" id="pwa-install-btn" onclick="installPWA()" style="display:none">📲 <span>تثبيت</span></button>
+      <button class="logout-btn" onclick="doLogout()" id="btn-logout">خروج</button>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV (mobile only) -->
+  <nav id="bottom-nav">
+    <button class="bn-btn active" id="bn-chat" onclick="switchPanel('chat');bnActive('chat')">
+      <span class="bn-ico">💬</span><span class="bn-lbl">المساعد</span>
+    </button>
+    <button class="bn-btn" id="bn-history" onclick="switchPanel('history');bnActive('history')">
+      <span class="bn-ico">🕐</span><span class="bn-lbl">السجل</span>
+    </button>
+    <button class="bn-btn" id="bn-favorites" onclick="switchPanel('favorites');bnActive('favorites')">
+      <span class="bn-ico">⭐</span><span class="bn-lbl">المفضلة</span>
+    </button>
+    <button class="bn-btn" id="bn-announce" onclick="switchPanel('announce');bnActive('announce')">
+      <span style="position:relative;display:inline-block"><span class="bn-ico">📢</span></span>
+      <span class="bn-lbl">الإعلانات</span>
+    </button>
+    <button class="bn-btn" id="bn-calendar" onclick="switchPanel('calendar');bnActive('calendar')">
+      <span class="bn-ico">📅</span><span class="bn-lbl">مهامي</span>
+    </button>
+    <button class="bn-btn admin-only" id="bn-admin" onclick="switchPanel('admin');bnActive('admin')">
+      <span class="bn-ico">⚙️</span><span class="bn-lbl">التحكم</span>
+    </button>
+  </nav>
+
+  <!-- CHAT PANEL -->
+  <div class="panel active" id="panel-chat">
+    <div class="chat-bar">
+      <span>📚</span><span id="chat-info">—</span>
+      <span class="chip" id="chat-chip" style="color:#fca5a5;border-color:rgba(239,68,68,0.3)">—</span>
+      <span style="margin-right:auto;font-size:11px;opacity:.5" id="chat-hint">اسأل عن أي إجراء حكومي</span>
+    </div>
+    <div class="msgs" id="msgs">
+      <div class="welcome">
+        <h2 id="welcome-title">👋 أهلاً بك!</h2>
+        <p id="welcome-p">بقدر أجاوبك على أي سؤال عن الإجراءات الحكومية في الكويت</p>
+        <div class="qqs" id="qqs"></div>
+      </div>
+    </div>
+    <div class="input-area">
+      <button class="send-btn" id="send-btn" onclick="sendMsg()">➤</button>
+      <div class="input-wrap">
+        <textarea id="user-input" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+          oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px'"></textarea>
+      </div>
+      <button class="img-btn" onclick="document.getElementById('img-input').click()" title="إرفق صورة">📎</button>
+      <input type="file" id="img-input" accept="image/*" style="display:none" onchange="handleImageUpload(this)" />
+    </div>
+  </div>
+
+  </div><!-- end panel-chat -->
+
+  <!-- ANNOUNCEMENTS PANEL -->
+  <div class="panel" id="panel-announce">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="sec-title" style="margin-bottom:0">📢 <span id="ann-title">الإعلانات والقرارات</span></div>
+      <button onclick="markAllRead()" class="btn btn-ghost" style="padding:5px 12px;font-size:12px" id="ann-read-all">تحديد كمقروء</button>
+    </div>
+    <div id="ann-list"><div style="text-align:center;padding:40px;color:var(--gray);font-family:'Almarai',sans-serif">لا توجد إعلانات حالياً</div></div>
+  </div>
+
+  <!-- CALENDAR PANEL -->
+  <div class="panel" id="panel-calendar">
+    <div style="max-width:700px;margin:0 auto;width:100%">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div class="sec-title" style="margin-bottom:0">📅 <span id="cal-title">مهامي</span></div>
+        <button onclick="openAddTaskModal()" class="btn btn-gold" style="padding:6px 14px;font-size:13px" id="cal-add-btn">+ <span id="cal-add-lbl">إضافة مهمة</span></button>
+      </div>
+
+      <!-- Calendar grid -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="cal-header">
+          <button class="cal-nav" onclick="calNav(-1)">‹</button>
+          <div style="font-size:15px;font-weight:700;color:var(--gold2)" id="cal-month-lbl">—</div>
+          <button class="cal-nav" onclick="calNav(1)">›</button>
+        </div>
+        <div class="cal-grid" id="cal-days-labels"></div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <!-- Selected day tasks -->
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:10px" id="cal-day-title">مهام اليوم</div>
+        <div id="cal-tasks-list"><div style="color:var(--gray);font-size:13px;font-family:'Almarai',sans-serif">لا توجد مهام</div></div>
+      </div>
+
+      <!-- WhatsApp send all -->
+      <div style="margin-top:18px;background:rgba(37,211,102,0.06);border:1px solid rgba(37,211,102,0.2);border-radius:12px;padding:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px" id="cal-wa-bar">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#86efac" id="wa-remind-title">📲 أرسل تذكير مهام اليوم</div>
+          <div style="font-size:11px;color:rgba(134,239,172,0.6);font-family:'Almarai',sans-serif;margin-top:2px" id="wa-remind-sub">افتح واتساب مع مهامك جاهزة</div>
+        </div>
+        <button onclick="sendTasksWa()" class="btn" style="background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.3);color:#86efac;padding:7px 15px;font-size:13px" id="wa-send-btn">💬 واتساب</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD TASK MODAL -->
+  <div id="task-modal" style="display:none;position:fixed;inset:0;background:rgba(7,17,31,0.9);z-index:300;align-items:center;justify-content:center;padding:20px">
+    <div style="width:100%;max-width:400px;background:linear-gradient(145deg,#0d1f38,#0a1628);border:1px solid var(--border);border-radius:20px;padding:24px;box-shadow:0 30px 80px rgba(0,0,0,0.7)">
+      <div style="font-size:16px;font-weight:900;color:var(--gold2);margin-bottom:18px" id="task-modal-title">➕ مهمة جديدة</div>
+      <div class="fld"><label id="task-lbl-title">عنوان المهمة</label><input id="task-title-inp" type="text" placeholder="مثال: تجديد إذن عمل محمد" /></div>
+      <div class="fld"><label id="task-lbl-date">التاريخ</label><input id="task-date-inp" type="date" /></div>
+      <div class="fld"><label id="task-lbl-note">ملاحظة (اختياري)</label><input id="task-note-inp" type="text" placeholder="مثال: المستندات المطلوبة..." /></div>
+      <div class="fld"><label id="task-lbl-color">اللون</label>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <div class="color-pick" data-color="#c9a84c" onclick="pickColor(this)" style="background:#c9a84c;width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid white"></div>
+          <div class="color-pick" data-color="#3b82f6" onclick="pickColor(this)" style="background:#3b82f6;width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent"></div>
+          <div class="color-pick" data-color="#22c55e" onclick="pickColor(this)" style="background:#22c55e;width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent"></div>
+          <div class="color-pick" data-color="#ef4444" onclick="pickColor(this)" style="background:#ef4444;width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent"></div>
+          <div class="color-pick" data-color="#a855f7" onclick="pickColor(this)" style="background:#a855f7;width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:9px;margin-top:6px">
+        <button class="btn btn-gold" onclick="saveTask()" style="flex:1" id="task-save-btn">✅ حفظ</button>
+        <button class="btn btn-ghost" onclick="closeTaskModal()" style="flex:1" id="task-cancel-btn">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY PANEL -->
+  <div class="panel" id="panel-history">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div class="sec-title" style="margin-bottom:0">🕐 <span id="hist-title">سجل المحادثات</span></div>
+      <div style="position:relative">
+        <input id="hist-search" type="text" placeholder="ابحث في المحادثات..." style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:9px;padding:7px 12px;color:var(--text);font-family:'Almarai',sans-serif;font-size:13px;width:200px;outline:none" oninput="filterHistory(this.value)" />
+      </div>
+    </div>
+    <div id="hist-list"><div style="text-align:center;padding:40px;color:var(--gray);font-family:'Almarai',sans-serif">لا توجد محادثات سابقة</div></div>
+  </div>
+
+  <!-- FAVORITES PANEL -->
+  <div class="panel" id="panel-favorites">
+    <div class="sec-title">⭐ <span id="fav-title">المفضلة</span></div>
+    <div id="fav-list"><div style="text-align:center;padding:40px;color:var(--gray);font-family:'Almarai',sans-serif">لا توجد إجابات محفوظة بعد</div></div>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div class="panel" id="panel-admin">
+    <div class="sidebar">
+      <div class="si active" onclick="switchSub('overview')" data-sub="overview">📊 <span id="si-overview">نظرة عامة</span></div>
+      <div class="si" onclick="switchSub('users')" data-sub="users">👥 <span id="si-users">المشتركين</span></div>
+      <div class="si" onclick="switchSub('adduser')" data-sub="adduser">➕ <span id="si-add">إضافة</span></div>
+      <div class="si" onclick="switchSub('questions')" data-sub="questions">❓ <span id="si-questions">أسئلة المستخدمين</span></div>
+      <div class="si" onclick="switchSub('announcements')" data-sub="announcements">📢 <span id="si-ann">الإعلانات</span></div>
+      <div class="si" onclick="switchSub('data')" data-sub="data">📁 <span id="si-data">البيانات</span></div>
+      <div class="si" onclick="switchSub('locations')" data-sub="locations">📍 <span id="si-locs">المواقع</span></div>
+      <div class="si" onclick="switchSub('templates')" data-sub="templates">📄 <span id="si-templates">النماذج</span></div>
+      <div class="si" onclick="switchSub('settings')" data-sub="settings">🔑 <span id="si-settings">الإعدادات</span></div>
+    </div>
+    <div class="ac">
+
+      <!-- OVERVIEW -->
+      <div class="sub-panel active" id="sub-overview">
+        <div class="sec-title">📊 <span id="ov-title">نظرة عامة</span></div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-num" id="st-users">—</div><div class="stat-lbl" id="st-lbl-users">مشترك نشط</div></div>
+          <div class="stat-card"><div class="stat-num" id="st-chunks">—</div><div class="stat-lbl" id="st-lbl-chunks">قطعة معرفة</div></div>
+          <div class="stat-card"><div class="stat-num" id="st-locs">—</div><div class="stat-lbl" id="st-lbl-locs">جهة حكومية</div></div>
+          <div class="stat-card"><div class="stat-num" id="st-msgs">—</div><div class="stat-lbl" id="st-lbl-msgs">سؤال أُجيب</div></div>
+        </div>
+        <div class="card">
+          <table class="tbl">
+            <tr><td id="ov-api-lbl">حالة الـ API</td><td id="api-status">—</td></tr>
+            <tr><td id="ov-data-lbl">البيانات</td><td id="data-status">—</td></tr>
+            <tr><td id="ov-total-lbl">إجمالي المشتركين</td><td id="total-users">—</td></tr>
+          </table>
+        </div>
+        <!-- Expiring Soon -->
+        <div id="expiring-section" style="display:none">
+          <div class="sec-title" style="color:#fca5a5">⚠️ <span id="expiring-title">اشتراكات هتنتهي قريباً</span></div>
+          <div class="card" style="border-color:rgba(239,68,68,0.3)">
+            <table class="tbl" id="expiring-tb"></table>
+          </div>
+        </div>
+      </div>
+
+      <!-- USERS -->
+      <div class="sub-panel" id="sub-users">
+        <div class="sec-title">👥 <span id="users-title">المشتركين</span></div>
+        <table class="tbl">
+          <thead><tr>
+            <th id="th-name">الاسم</th><th id="th-phone">الهاتف</th><th id="th-email">الإيميل</th>
+            <th id="th-status">الحالة</th><th id="th-sub">الاشتراك</th><th id="th-actions">إجراء</th>
+          </tr></thead>
+          <tbody id="users-tb"></tbody>
+        </table>
+      </div>
+
+      <!-- ADD USER -->
+      <div class="sub-panel" id="sub-adduser">
+        <div class="sec-title">➕ <span id="add-title">إضافة مشترك</span></div>
+        <div class="card">
+          <div class="frow">
+            <div class="fld"><label id="add-lbl-name">الاسم</label><input id="nu-name" type="text" placeholder="محمد أحمد" /></div>
+            <div class="fld"><label id="add-lbl-email">الإيميل</label><input id="nu-email" type="email" placeholder="user@email.com" /></div>
+          </div>
+          <div class="frow">
+            <div class="fld"><label id="add-lbl-pass">كلمة المرور</label><input id="nu-pass" type="text" placeholder="كلمة مرور" /></div>
+            <div class="fld"><label id="add-lbl-role">الدور</label>
+              <select id="nu-role">
+                <option value="user" id="role-user">مشترك</option>
+                <option value="admin" id="role-admin">أدمن</option>
+              </select>
+            </div>
+          </div>
+          <div class="arow">
+            <button class="btn btn-gold" onclick="addUser()" id="add-btn">✅ إضافة</button>
+            <button class="btn btn-ghost" onclick="clearAddForm()" id="clear-btn">مسح</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUESTIONS -->
+      <div class="sub-panel" id="sub-questions">
+        <div class="sec-title">❓ <span id="questions-title">أسئلة المستخدمين</span></div>
+        <div class="card" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input id="q-search" type="text" placeholder="ابحث في الأسئلة..." style="flex:1;min-width:150px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:9px;padding:7px 12px;color:var(--text);font-family:'Almarai',sans-serif;font-size:13px;outline:none" oninput="filterAdminQuestions(this.value)" />
+          <select id="q-filter-user" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:9px;padding:7px 10px;color:var(--text);font-family:'Almarai',sans-serif;font-size:13px" onchange="filterAdminQuestions(document.getElementById('q-search').value)">
+            <option value="">كل المستخدمين</option>
+          </select>
+          <button class="btn btn-gold" onclick="exportQuestionsAsTxt()" style="white-space:nowrap">📥 تصدير كـ txt</button>
+        </div>
+        <div id="admin-questions-list"><div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px;padding:12px">جاري التحميل...</div></div>
+      </div>
+
+      <!-- ANNOUNCEMENTS ADMIN -->
+      <div class="sub-panel" id="sub-announcements">
+        <div class="sec-title">📢 <span id="ann-admin-title">نشر إعلان / قرار جديد</span></div>
+        <div class="card">
+          <div class="fld"><label id="ann-lbl-title">العنوان</label><input id="ann-inp-title" type="text" placeholder="مثال: قرار جديد بشأن تجديد الإقامة" /></div>
+          <div class="fld"><label id="ann-lbl-body">التفاصيل</label><textarea id="ann-inp-body" style="min-height:90px" placeholder="اكتب تفاصيل القرار أو الإعلان..."></textarea></div>
+          <div class="frow">
+            <div class="fld"><label id="ann-lbl-type">النوع</label>
+              <select id="ann-inp-type">
+                <option value="news" id="ann-t-news">📰 خبر</option>
+                <option value="urgent" id="ann-t-urgent">🔴 عاجل</option>
+                <option value="info" id="ann-t-info">ℹ️ معلومة</option>
+              </select>
+            </div>
+            <div class="fld"><label id="ann-lbl-img">صورة (رابط URL اختياري)</label><input id="ann-inp-img" type="text" placeholder="https://..." /></div>
+          </div>
+          <div class="arow">
+            <button class="btn btn-gold" onclick="publishAnnouncement()" id="ann-pub-btn">📢 نشر للكل</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="sec-title" style="font-size:15px" id="ann-hist-title">الإعلانات السابقة</div>
+        <div id="ann-admin-list"></div>
+      </div>
+
+      <!-- DATA -->
+      <div class="sub-panel" id="sub-data">
+        <div class="sec-title">📁 <span id="data-title">بيانات التدريب</span></div>
+        
+        <!-- URL FETCHER -->
+        <div class="card" style="border-color:rgba(201,168,76,0.35)">
+          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:6px">🌐 جلب محتوى موقع تلقائي</div>
+          <p class="info-note">حط رابط أي صفحة حكومية وهيجيب محتواها ويضيفه للبيانات مباشرة</p>
+          <div class="fld">
+            <label style="font-family:'Almarai',sans-serif;font-size:12px;color:var(--gray)">الموضوع (مثال: تجديد الإقامة، إذن العمل المؤقت...)</label>
+            <input type="text" id="fetch-topic" placeholder="اكتب الموضوع اللي الصفحة دي بتخصه" />
+          </div>
+          <div class="fld">
+            <label style="font-family:'Almarai',sans-serif;font-size:12px;color:var(--gray)">رابط الصفحة</label>
+            <input type="url" id="fetch-url" placeholder="https://e.gov.kw/ar/services/..." style="direction:ltr" />
+          </div>
+          <div class="arow">
+            <button class="btn btn-gold" onclick="fetchUrlData()">🌐 جلب المحتوى</button>
+          </div>
+          <div id="fetch-info" style="margin-top:8px;font-size:12px;font-family:'Almarai',sans-serif"></div>
+        </div>
+
+        <div class="card">
+          <div class="upload-zone" onclick="document.getElementById('admin-file').click()">
+            <div style="font-size:32px;margin-bottom:8px">📂</div>
+            <h3 id="upload-title">رفع محادثات واتساب (.txt)</h3>
+            <p id="upload-sub">اسحب الملف هنا أو اضغط للاختيار</p>
+          </div>
+          <input type="file" id="admin-file" accept=".txt" style="display:none" onchange="uploadData(this)">
+          <div id="upload-info"></div>
+          <div class="divider"></div>
+          <div style="font-size:13px;color:var(--gray);font-family:'Almarai',sans-serif">
+            <span id="cur-data-lbl">البيانات الحالية:</span> <span id="chunks-info" style="color:var(--gold2)">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOCATIONS -->
+      <div class="sub-panel" id="sub-locations">
+        <div class="sec-title">📍 <span id="locs-title">الجهات الحكومية</span></div>
+        <p class="info-note" id="locs-note">بس أضف اسم الجهة ورابطها والكلمات المفتاحية — النظام هيتعلم الخطوات تلقائياً من المحادثات ويربطها بالرابط.</p>
+        <div class="card">
+          <div class="frow">
+            <div class="fld"><label id="loc-lbl-name">اسم الجهة</label><input id="loc-name" type="text" placeholder="تجديد إذن العمل — أسهل" /></div>
+            <div class="fld"><label id="loc-lbl-url">الموقع</label><input id="loc-url" type="text" placeholder="https://sahel.e.gov.kw" /></div>
+          </div>
+          <div class="frow">
+            <div class="fld"><label id="loc-lbl-addr">العنوان</label><input id="loc-addr" type="text" placeholder="خدمة أونلاين" /></div>
+            <div class="fld"><label id="loc-lbl-keys">كلمات مفتاحية</label><input id="loc-keys" type="text" placeholder="إذن عمل, تجديد" /></div>
+          </div>
+          <div class="fld"><label id="loc-lbl-notes">ملاحظات (اختياري)</label><textarea id="loc-notes" placeholder="أوقات العمل، شروط..."></textarea></div>
+          <button class="btn btn-gold" onclick="addLocation()" id="loc-add-btn">📍 إضافة</button>
+        </div>
+        <div id="locs-list"></div>
+      </div>
+
+      <!-- TEMPLATES -->
+      <div class="sub-panel" id="sub-templates">
+        <div class="sec-title">📄 <span>النماذج الحكومية</span></div>
+        <div class="card">
+          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:6px">⬆️ رفع نموذج جديد</div>
+          <div class="frow">
+            <div class="fld"><label>اسم النموذج</label><input type="text" id="tpl-name" placeholder="نموذج تجديد الإقامة" /></div>
+            <div class="fld"><label>الجهة الحكومية</label><input type="text" id="tpl-entity" placeholder="وزارة الداخلية" /></div>
+          </div>
+          <div class="fld"><label>وصف (اختياري)</label><input type="text" id="tpl-desc" placeholder="نموذج فارغ لتجديد الإقامة..." /></div>
+          <div class="fld">
+            <label>الملف (PDF أو Word)</label>
+            <input type="file" id="tpl-file" accept=".pdf,.doc,.docx" style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;padding:8px;color:#e8edf5;font-family:'Almarai',sans-serif;width:100%;box-sizing:border-box" />
+          </div>
+          <button class="btn btn-gold" onclick="uploadTemplate()">📄 رفع النموذج</button>
+          <div id="tpl-upload-info" style="margin-top:8px;font-size:12px;font-family:'Almarai',sans-serif"></div>
+        </div>
+        <div class="divider"></div>
+        <div id="tpl-admin-list"></div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div class="sub-panel" id="sub-settings">
+        <div class="sec-title">🔑 <span id="settings-title">الإعدادات</span></div>
+
+        <!-- MODE TOGGLE -->
+        <div class="card" style="border-color:rgba(201,168,76,0.35)">
+          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:8px" id="mode-title">🔀 وضع التشغيل</div>
+          <p class="info-note" id="mode-note">مجاني: الكل يدخل بعد التجربة. مدفوع: من انتهت تجربته يشوف شاشة الدفع.</p>
+          <div class="mode-toggle">
+            <button class="btn btn-gold" id="mode-free-btn" onclick="setMode('free')">🆓 <span id="mode-free-lbl">مجاني</span></button>
+            <button class="btn btn-ghost" id="mode-paid-btn" onclick="setMode('paid')">💳 <span id="mode-paid-lbl">مدفوع</span></button>
+            <span class="mode-lbl" id="mode-status">—</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:8px">Anthropic API Key</div>
+          <p class="info-note" id="api-note">بتحصل عليه من <strong>console.anthropic.com</strong></p>
+          <div class="fld"><label>API Key</label><input type="password" id="s-api-key" placeholder="sk-ant-api03-..." /></div>
+          <div class="arow">
+            <button class="btn btn-gold" onclick="saveSettings()" id="save-btn">💾 <span id="save-lbl">حفظ</span></button>
+            <button class="btn btn-ghost" onclick="testApi()" id="test-btn">🧪 <span id="test-lbl">اختبار</span></button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:8px" id="gen-title">⚙️ إعدادات عامة</div>
+          <div class="frow">
+            <div class="fld"><label id="lbl-platform-name">اسم المنصة</label><input type="text" id="s-name" placeholder="المرشد للمعاملات الحكومية" /></div>
+            <div class="fld"><label id="lbl-price">سعر الاشتراك</label><input type="text" id="s-price" placeholder="5" /></div>
+          </div>
+          <div class="frow">
+            <div class="fld"><label id="lbl-trial-days">أيام التجربة المجانية</label><input type="number" id="s-trial-days" placeholder="10" value="10" /></div>
+            <div class="fld"><label id="lbl-wa-phone">رقم واتساب للدفع</label><input type="tel" id="s-wa-phone" placeholder="60020313" /></div>
+          </div>
+          <div class="frow">
+            <div class="fld"><label id="lbl-daily-limit">حد أقصى للأسئلة/يوم</label><input type="number" id="s-daily-limit" placeholder="30" value="30" /></div>
+            <div class="fld"></div>
+          </div>
+          <button class="btn btn-gold" onclick="saveSettings()">💾 <span id="save-lbl2">حفظ</span></button>
+        </div>
+
+        <div class="card">
+          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:6px" id="ejs-title">📧 EmailJS</div>
+          <p class="info-note" id="ejs-note">سجّل مجاناً على emailjs.com — 200 إيميل/شهر.<br>في الـ Template: <code>{{to_email}}</code> <code>{{user_name}}</code> <code>{{user_pass}}</code></p>
+          <div class="frow">
+            <div class="fld"><label>Service ID</label><input type="text" id="s-ejs-srv" placeholder="service_xxxxxxx" /></div>
+            <div class="fld"><label>Template ID</label><input type="text" id="s-ejs-tpl" placeholder="template_xxxxxxx" /></div>
+          </div>
+          <div class="fld"><label>Public Key</label><input type="text" id="s-ejs-key" placeholder="xxxxxxxxxxxxxx" /></div>
+          <div class="arow">
+            <button class="btn btn-gold" onclick="saveSettings()">💾 <span id="save-lbl3">حفظ</span></button>
+            <button class="btn btn-ghost" onclick="testEmail()" id="test-email-btn">📧 <span id="test-email-lbl">اختبار إيميل</span></button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- LOGOUT CONFIRM -->
+<div class="logout-confirm" id="logout-confirm">
+  <div class="logout-box">
+    <h3 id="lc-title">تسجيل الخروج</h3>
+    <p id="lc-msg">هل أنت متأكد من تسجيل الخروج؟</p>
+    <div class="btns">
+      <button class="btn btn-red" onclick="confirmLogout()" id="lc-yes">خروج</button>
+      <button class="btn btn-ghost" onclick="closeLogoutConfirm()" id="lc-no">إلغاء</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="ov" id="ov"><div class="spin"></div><div class="spin-txt" id="ov-txt">جاري...</div></div>
+
+<!-- PAYMENT MODAL -->
+<div id="pay-modal" style="display:none;position:fixed;inset:0;background:rgba(7,17,31,0.92);z-index:300;align-items:center;justify-content:center;padding:20px">
+  <div style="width:100%;max-width:420px;background:linear-gradient(145deg,#0d1f38,#0a1628);border:1px solid var(--border);border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,0.7)">
+    
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,var(--blue),#0d2a56);padding:22px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:18px;font-weight:900;color:var(--gold2)" id="modal-title">💳 إتمام الاشتراك</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.55);font-family:'Almarai',sans-serif;margin-top:3px" id="modal-sub">اتبع الخطوات أدناه</div>
+      </div>
+      <button onclick="closePayModal()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px">✕</button>
+    </div>
+
+    <!-- Steps -->
+    <div style="padding:22px 24px;display:flex;flex-direction:column;gap:14px">
+      
+      <!-- Step 1 -->
+      <div style="display:flex;gap:13px;align-items:flex-start">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--navy);flex-shrink:0">١</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#e8edf5;margin-bottom:4px" id="step1-title">حوّل مبلغ الاشتراك</div>
+          <div style="font-size:13px;font-family:'Almarai',sans-serif;color:var(--gray);line-height:1.7" id="step1-desc">عبر تطبيق <strong style="color:var(--gold2)">ومض</strong> أو أي تحويل بنكي إلى الرقم:</div>
+          <div style="background:rgba(201,168,76,0.1);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-top:8px;text-align:center">
+            <div style="font-size:22px;font-weight:900;color:var(--gold2);direction:ltr;letter-spacing:2px" id="modal-phone">60020313</div>
+            <div style="font-size:12px;color:var(--gray);font-family:'Almarai',sans-serif;margin-top:3px" id="modal-amount-label">المبلغ: <strong style="color:var(--gold2)" id="modal-amount">5</strong> <span id="modal-curr">دينار كويتي / شهر</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border)"></div>
+
+      <!-- Step 2 -->
+      <div style="display:flex;gap:13px;align-items:flex-start">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--navy);flex-shrink:0">٢</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#e8edf5;margin-bottom:4px" id="step2-title">صوّر إيصال التحويل</div>
+          <div style="font-size:13px;font-family:'Almarai',sans-serif;color:var(--gray);line-height:1.7" id="step2-desc">التقط صورة للإيصال أو screenshot لتأكيد التحويل</div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border)"></div>
+
+      <!-- Step 3 -->
+      <div style="display:flex;gap:13px;align-items:flex-start">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--navy);flex-shrink:0">٣</div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#e8edf5;margin-bottom:4px" id="step3-title">أرسل الصورة على واتساب</div>
+          <div style="font-size:13px;font-family:'Almarai',sans-serif;color:var(--gray);line-height:1.7" id="step3-desc">أرسل صورة الإيصال مع اسمك وإيميلك للرقم:</div>
+          <a id="whatsapp-link" href="" target="_blank" style="display:flex;align-items:center;gap:9px;background:rgba(37,211,102,0.12);border:1px solid rgba(37,211,102,0.3);border-radius:10px;padding:11px 15px;margin-top:8px;text-decoration:none;transition:all .2s" onmouseover="this.style.background='rgba(37,211,102,0.2)'" onmouseout="this.style.background='rgba(37,211,102,0.12)'">
+            <span style="font-size:22px">💬</span>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#86efac" id="modal-wa-num">60020313</div>
+              <div style="font-size:11px;color:rgba(134,239,172,0.7);font-family:'Almarai',sans-serif" id="modal-wa-label">اضغط للفتح على واتساب</div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border)"></div>
+
+      <!-- Note -->
+      <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:11px 14px;font-size:12px;font-family:'Almarai',sans-serif;color:#86efac;line-height:1.7" id="modal-note">
+        ✅ بعد مراجعة التحويل، سيتم تفعيل حسابك خلال ساعات قليلة وتصلك رسالة تأكيد
+      </div>
+
+      <button onclick="closePayModal()" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:var(--gray);border-radius:10px;padding:11px;font-family:'Almarai',sans-serif;font-size:13px;cursor:pointer" id="modal-close-btn">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// TRANSLATIONS
+// ================================================================
+const T = {
+  ar: {
+    loading:'جاري التحميل...', initFail:'تحقق من إعدادات Firebase',
+    subTitle:'المرشد للمعاملات الحكومية', subTag:'خبرة آلاف المناديب في سؤال واحد',
+    trialBadge:'🎁 جرّب مجاناً 10 أيام — بدون بطاقة',
+    f1:'إجابات فورية عن الإجراءات الحكومية', f2:'خبرة حقيقية من المرشد للمعاملات الحكومية',
+    f3:'مواقع وروابط الجهات الحكومية', f4:'تحديثات يومية بالأخبار الجديدة',
+    lblName:'الاسم الكامل', lblEmail:'البريد الإلكتروني', lblPhone:'رقم الهاتف',
+    subBtn:'🎁 ابدأ التجربة المجانية', haveAcc:'عندك حساب؟', goLogin:'تسجيل الدخول',
+    loginTitle:'المرشد للمعاملات الحكومية', loginTag:'النظام الذكي للإجراءات الحكومية',
+    lblLoginEmail:'البريد الإلكتروني', lblLoginPass:'كلمة المرور',
+    loginBtn:'دخول →', noAcc:'مش عندك حساب؟', goSub:'جرّب مجاناً',
+    loginErr:'❌ بيانات غلط أو الحساب معطّل',
+    sucTitle:'تم إنشاء حسابك!', sucP1:'لديك {n} أيام مجانية — بيانات دخولك:',
+    sucLblEmail:'الإيميل', sucLblPass:'كلمة المرور',
+    sucEmailNote:'📧 تم إرسال هذه البيانات على إيميلك', sucBtn:'دخول للنظام ←',
+    pwTitle:'انتهت فترة التجربة المجانية',
+    pwP1:'للاستمرار، يرجى الاشتراك بـ', pwCurr:'دينار كويتي', pwMonth:'شهرياً',
+    pwF1:'وصول كامل لكل الإجراءات', pwF2:'تحديثات يومية', pwF3:'خبرة آلاف المناديب',
+    pwBtn:'💳 اشترك الآن', pwLogout:'خروج',
+    tabChat:'المساعد', tabAdmin:'لوحة التحكم',
+    trialLeft:'{n} يوم متبقي', logout:'خروج',
+    chatInfo:'{n} قطعة معرفة', chatNoData:'لا توجد بيانات',
+    chatConnected:'متصل', chatDisconnected:'غير متصل',
+    chatHint:'اسأل عن أي إجراء حكومي',
+    welcomeTitle:'👋 أهلاً بك!', welcomeP:'بقدر أجاوبك على أي سؤال عن الإجراءات الحكومية في الكويت',
+    q1:'تجديد إذن العمل', q2:'التحويل الوظيفي', q3:'السجل التجاري',
+    q4:'التأمينات', q5:'تجديد الإقامة', q6:'تصريح العمل',
+    ovTitle:'نظرة عامة', siOverview:'نظرة عامة', siUsers:'المشتركين',
+    siAdd:'إضافة', siData:'البيانات', siLocs:'المواقع', siSettings:'الإعدادات',
+    stLblUsers:'مشترك نشط', stLblChunks:'قطعة معرفة', stLblLocs:'جهة حكومية', stLblMsgs:'سؤال أُجيب',
+    ovApiLbl:'حالة الـ API', ovDataLbl:'البيانات', ovTotalLbl:'إجمالي المشتركين',
+    usersTitle:'المشتركين', thName:'الاسم', thPhone:'الهاتف', thEmail:'الإيميل',
+    thStatus:'الحالة', thSub:'الاشتراك', thActions:'إجراء',
+    addTitle:'إضافة مشترك', addLblName:'الاسم', addLblEmail:'الإيميل',
+    addLblPass:'كلمة المرور', addLblRole:'الدور',
+    roleUser:'مشترك', roleAdmin:'أدمن', addBtn:'✅ إضافة', clearBtn:'مسح',
+    dataTitle:'بيانات التدريب', uploadTitle:'رفع محادثات واتساب (.txt)',
+    uploadSub:'اسحب الملف هنا أو اضغط للاختيار', curDataLbl:'البيانات الحالية:',
+    locsTitle:'الجهات الحكومية',
+    locsNote:'بس أضف اسم الجهة ورابطها والكلمات المفتاحية — النظام هيتعلم الخطوات تلقائياً.',
+    locLblName:'اسم الجهة', locLblUrl:'الموقع', locLblAddr:'العنوان',
+    locLblKeys:'كلمات مفتاحية', locLblNotes:'ملاحظات (اختياري)', locAddBtn:'📍 إضافة',
+    settingsTitle:'الإعدادات', modeTitle:'🔀 وضع التشغيل',
+    modeNote:'مجاني: الكل يدخل بعد التجربة. مدفوع: من انتهت تجربته يشوف شاشة الدفع.',
+    modeFree:'مجاني', modePaid:'مدفوع',
+    modeStatusFree:'🟢 النظام مجاني — الكل يدخل',
+    modeStatusPaid:'🔴 النظام مدفوع — المنتهية تجربتهم محجوبون',
+    apiNote:'بتحصل عليه من console.anthropic.com',
+    saveLbl:'حفظ', testLbl:'اختبار', genTitle:'⚙️ إعدادات عامة',
+    lblPlatformName:'اسم المنصة', lblPrice:'سعر الاشتراك',
+    lblTrialDays:'أيام التجربة المجانية', lblPayUrl:'رابط الدفع (Stripe)',
+    ejsTitle:'📧 EmailJS', ejsNote:'سجّل مجاناً على emailjs.com — 200 إيميل/شهر.',
+    testEmailBtn:'اختبار إيميل',
+    statusActive:'نشط', statusInactive:'معطل',
+    subTrial:'تجربة', subPaid:'مدفوع ✅', subExpired:'منتهية',
+    btnMarkPaid:'✅ تأكيد الدفع', btnRevokePaid:'إلغاء الدفع',
+    btnDeactivate:'تعطيل', btnActivate:'تفعيل',
+    toastSaved:'✅ تم الحفظ', toastModeFree:'✅ تم التحويل للمجاني',
+    toastModePaid:'✅ تم التحويل للمدفوع',
+    toastAdded:'✅ تمت الإضافة', toastDeleted:'🗑️ تم الحذف',
+    toastApiOk:'✅ الاتصال ناجح!', toastApiFail:'❌ فشل الاتصال',
+    toastEmailOk:'✅ تم إرسال إيميل اختباري!',
+    errFillAll:'الحقول مش مكتملة', errEmailUsed:'هذا الإيميل مسجل بالفعل',
+    errNoApiKey:'ضع الـ API Key الأول',
+    errNoEjs:'احفظ إعدادات EmailJS الأول',
+    errNoPayUrl:'رابط الدفع مش محدد بعد',
+    errDeviceLocked:'هذا الجهاز سبق استخدامه للتجربة المجانية — يرجى الاشتراك أو استخدام حساب موجود',
+    apiKeyNotSet:'⚠️ الـ API Key غير محدد — اذهب لـ لوحة التحكم ← الإعدادات',
+    noDataMsg:'مش عندي معلومة كافية عن ده في قاعدة البيانات دلوقتي',
+    uploading:'جاري رفع البيانات...', uploadDone:'✅ تم رفع {n} قطعة جديدة! الإجمالي: {t}',
+    loggingIn:'جاري الدخول...', creatingAcc:'جاري إنشاء الحساب...',
+    saving:'جاري الحفظ...', testing:'جاري الاختبار...',
+    adminRole:'أدمن', userRole:'مشترك', langBtn:'EN',
+    inputPlaceholder:'اسأل عن أي إجراء حكومي...',
+    noLocsAdded:'لا توجد جهات مضافة',
+  },
+  en: {
+    loading:'Loading...', initFail:'Check Firebase settings',
+    subTitle:'Kuwait Mandoob', subTag:'Thousands of agents\' expertise in one question',
+    trialBadge:'🎁 Free 10-day trial — no card needed',
+    f1:'Instant answers on government procedures', f2:'Real expertise from Kuwait agents',
+    f3:'Government website links & locations', f4:'Daily updates on new decisions',
+    lblName:'Full Name', lblEmail:'Email Address', lblPhone:'Phone Number',
+    subBtn:'🎁 Start Free Trial', haveAcc:'Already have an account?', goLogin:'Sign In',
+    loginTitle:'Kuwait Mandoob', loginTag:'Smart Government Services Assistant',
+    lblLoginEmail:'Email', lblLoginPass:'Password',
+    loginBtn:'Sign In →', noAcc:"Don't have an account?", goSub:'Try for Free',
+    loginErr:'❌ Wrong credentials or account disabled',
+    sucTitle:'Account Created!', sucP1:'You have {n} free days — your login details:',
+    sucLblEmail:'Email', sucLblPass:'Password',
+    sucEmailNote:'📧 These details were sent to your email', sucBtn:'Enter System →',
+    pwTitle:'Free Trial Ended',
+    pwP1:'To continue, subscribe for', pwCurr:'KWD', pwMonth:'per month',
+    pwF1:'Full access to all procedures', pwF2:'Daily updates', pwF3:'Thousands of agents\' expertise',
+    pwBtn:'💳 Subscribe Now', pwLogout:'Logout',
+    tabChat:'Assistant', tabAdmin:'Admin Panel',
+    trialLeft:'{n} days left', logout:'Logout',
+    chatInfo:'{n} knowledge chunks', chatNoData:'No data uploaded',
+    chatConnected:'Connected', chatDisconnected:'Disconnected',
+    chatHint:'Ask about any government procedure',
+    welcomeTitle:'👋 Welcome!', welcomeP:'I can answer any question about Kuwait government procedures',
+    q1:'Work Permit Renewal', q2:'Job Transfer', q3:'Commercial Register',
+    q4:'Social Insurance', q5:'Residency Renewal', q6:'Work Authorization',
+    ovTitle:'Overview', siOverview:'Overview', siUsers:'Subscribers',
+    siAdd:'Add', siData:'Data', siLocs:'Locations', siSettings:'Settings',
+    stLblUsers:'Active Subscribers', stLblChunks:'Knowledge Chunks', stLblLocs:'Gov. Entities', stLblMsgs:'Questions Answered',
+    ovApiLbl:'API Status', ovDataLbl:'Data', ovTotalLbl:'Total Subscribers',
+    usersTitle:'Subscribers', thName:'Name', thPhone:'Phone', thEmail:'Email',
+    thStatus:'Status', thSub:'Subscription', thActions:'Actions',
+    addTitle:'Add Subscriber', addLblName:'Name', addLblEmail:'Email',
+    addLblPass:'Password', addLblRole:'Role',
+    roleUser:'Subscriber', roleAdmin:'Admin', addBtn:'✅ Add', clearBtn:'Clear',
+    dataTitle:'Training Data', uploadTitle:'Upload WhatsApp Chat (.txt)',
+    uploadSub:'Drag file here or click to choose', curDataLbl:'Current data:',
+    locsTitle:'Government Entities',
+    locsNote:'Just add the entity name, URL, and keywords — the system learns the steps automatically from chat data.',
+    locLblName:'Entity Name', locLblUrl:'Website', locLblAddr:'Address',
+    locLblKeys:'Keywords', locLblNotes:'Notes (optional)', locAddBtn:'📍 Add',
+    settingsTitle:'Settings', modeTitle:'🔀 Operation Mode',
+    modeNote:'Free: everyone enters after trial. Paid: expired trial users see paywall.',
+    modeFree:'Free', modePaid:'Paid',
+    modeStatusFree:'🟢 Free mode — everyone can enter',
+    modeStatusPaid:'🔴 Paid mode — expired trial users are blocked',
+    apiNote:'Get it from console.anthropic.com',
+    saveLbl:'Save', testLbl:'Test', genTitle:'⚙️ General Settings',
+    lblPlatformName:'Platform Name', lblPrice:'Subscription Price',
+    lblTrialDays:'Free Trial Days', lblPayUrl:'Payment Link (Stripe)',
+    ejsTitle:'📧 EmailJS', ejsNote:'Register free at emailjs.com — 200 emails/month.',
+    testEmailBtn:'Test Email',
+    statusActive:'Active', statusInactive:'Disabled',
+    subTrial:'Trial', subPaid:'Paid ✅', subExpired:'Expired',
+    btnMarkPaid:'✅ Mark Paid', btnRevokePaid:'Revoke Payment',
+    btnDeactivate:'Disable', btnActivate:'Enable',
+    toastSaved:'✅ Saved', toastModeFree:'✅ Switched to Free',
+    toastModePaid:'✅ Switched to Paid',
+    toastAdded:'✅ Added successfully', toastDeleted:'🗑️ Deleted',
+    toastApiOk:'✅ Connection successful!', toastApiFail:'❌ Connection failed',
+    toastEmailOk:'✅ Test email sent!',
+    errFillAll:'Please fill all fields', errEmailUsed:'This email is already registered',
+    errNoApiKey:'Enter the API Key first',
+    errNoEjs:'Save EmailJS settings first',
+    errNoPayUrl:'Payment URL not set yet',
+    errDeviceLocked:'This device was already used for a free trial — please subscribe or use an existing account',
+    apiKeyNotSet:'⚠️ API Key not set — go to Admin Panel → Settings',
+    noDataMsg:"I don't have enough information about this. Try asking in the group.",
+    uploading:'Uploading data...', uploadDone:'✅ {n} new chunks uploaded! Total: {t}',
+    loggingIn:'Signing in...', creatingAcc:'Creating account...',
+    saving:'Saving...', testing:'Testing...',
+    adminRole:'Admin', userRole:'Subscriber', langBtn:'عربي',
+    inputPlaceholder:'Ask about any government procedure...',
+    noLocsAdded:'No entities added yet',
+  }
+};
+
+// ================================================================
+// STATE
+// ================================================================
+let _lang = localStorage.getItem('lang') || 'ar';
+let _settings = {};
+let _chunks = [];
+let _locations = [];
+let _chatHistory = [];
+let _busy = false;
+let _successEmail = '';
+let _successPass = '';
+
+// ================================================================
+// LANG
+// ================================================================
+function t(key, vars={}) {
+  let s = (T[_lang] || T.ar)[key] || key;
+  Object.entries(vars).forEach(([k,v]) => s = s.replace(`{${k}}`, v));
+  return s;
+}
+
+function toggleLang() {
+  _lang = _lang === 'ar' ? 'en' : 'ar';
+  localStorage.setItem('lang', _lang);
+  const isAr = _lang === 'ar';
+  document.documentElement.lang = _lang;
+  document.documentElement.dir = isAr ? 'rtl' : 'ltr';
+  applyLang();
+}
+
+function applyLang() {
+  const isAr = _lang === 'ar';
+  // Lang buttons
+  ['sub-lang-btn','login-lang-btn','app-lang-btn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = t('langBtn');
+  });
+  // Subscribe screen
+  setT('sub-title', 'subTitle'); setT('sub-tag', 'subTag');
+  setT('trial-badge', 'trialBadge');
+  setT('f1','f1'); setT('f2','f2'); setT('f3','f3'); setT('f4','f4');
+  setT('lbl-name','lblName'); setT('lbl-email','lblEmail'); setT('lbl-phone','lblPhone');
+  setT('sub-btn','subBtn'); setT('have-acc','haveAcc'); setT('go-login','goLogin');
+  // Login screen
+  setT('login-title','loginTitle'); setT('login-tag','loginTag');
+  setT('lbl-login-email','lblLoginEmail'); setT('lbl-login-pass','lblLoginPass');
+  setT('login-btn','loginBtn'); setT('no-acc','noAcc'); setT('go-sub','goSub');
+  setT('login-err','loginErr');
+  // Success
+  setT('suc-title','sucTitle');
+  setT('suc-lbl-email','sucLblEmail'); setT('suc-lbl-pass','sucLblPass');
+  setT('suc-email-note','sucEmailNote'); setT('suc-btn','sucBtn');
+  // Paywall
+  setT('pw-title','pwTitle'); setT('pw-curr','pwCurr'); setT('pw-month','pwMonth');
+  setT('pw-f1','pwF1'); setT('pw-f2','pwF2'); setT('pw-f3','pwF3');
+  setT('pw-btn','pwBtn'); setT('pw-logout','pwLogout');
+  // Topbar
+  setT('tab-chat-lbl','tabChat'); setT('tab-admin-lbl','tabAdmin');
+  setT('btn-logout','logout');
+  // Chat
+  setT('chat-hint','chatHint');
+  setT('welcome-title','welcomeTitle'); setT('welcome-p','welcomeP');
+  const placeholder = t('inputPlaceholder');
+  const inp = document.getElementById('user-input');
+  if (inp) inp.placeholder = placeholder;
+  // Quick questions
+  buildQQs();
+  // Admin sidebar
+  setT('si-overview','siOverview'); setT('si-users','siUsers'); setT('si-add','siAdd');
+  setT('si-data','siData'); setT('si-locs','siLocs'); setT('si-settings','siSettings');
+  // Overview
+  setT('ov-title','ovTitle');
+  setT('st-lbl-users','stLblUsers'); setT('st-lbl-chunks','stLblChunks');
+  setT('st-lbl-locs','stLblLocs'); setT('st-lbl-msgs','stLblMsgs');
+  setT('ov-api-lbl','ovApiLbl'); setT('ov-data-lbl','ovDataLbl'); setT('ov-total-lbl','ovTotalLbl');
+  // Users
+  setT('users-title','usersTitle'); setT('th-name','thName'); setT('th-phone','thPhone'); setT('th-email','thEmail');
+  setT('th-status','thStatus'); setT('th-sub','thSub'); setT('th-actions','thActions');
+  // Add
+  setT('add-title','addTitle'); setT('add-lbl-name','addLblName');
+  setT('add-lbl-email','addLblEmail'); setT('add-lbl-pass','addLblPass');
+  setT('add-lbl-role','addLblRole'); setT('role-user','roleUser'); setT('role-admin','roleAdmin');
+  setT('add-btn','addBtn'); setT('clear-btn','clearBtn');
+  // Data
+  setT('data-title','dataTitle'); setT('upload-title','uploadTitle');
+  setT('upload-sub','uploadSub'); setT('cur-data-lbl','curDataLbl');
+  // Locations
+  setT('locs-title','locsTitle'); setT('locs-note','locsNote');
+  setT('loc-lbl-name','locLblName'); setT('loc-lbl-url','locLblUrl');
+  setT('loc-lbl-addr','locLblAddr'); setT('loc-lbl-keys','locLblKeys');
+  setT('loc-lbl-notes','locLblNotes'); setT('loc-add-btn','locAddBtn');
+  // Settings
+  setT('settings-title','settingsTitle'); setT('mode-title','modeTitle');
+  setT('mode-note','modeNote'); setT('mode-free-lbl','modeFree'); setT('mode-paid-lbl','modePaid');
+  setT('api-note','apiNote'); setT('save-btn','saveLbl'); setT('test-lbl','testLbl');
+  setT('gen-title','genTitle'); setT('lbl-platform-name','lblPlatformName');
+  setT('lbl-price','lblPrice'); setT('lbl-trial-days','lblTrialDays');
+  setT('lbl-pay-url','lblPayUrl'); setT('ejs-title','ejsTitle'); setT('ejs-note','ejsNote');
+  setT('test-email-lbl','testEmailBtn');
+  setT('save-lbl','saveLbl'); setT('save-lbl2','saveLbl'); setT('save-lbl3','saveLbl');
+  // Update trial badge with actual days
+  const days = _settings.trialDays || 10;
+  const tb = document.getElementById('trial-badge');
+  if (tb) tb.textContent = isAr ? `🎁 جرّب مجاناً ${days} أيام — بدون بطاقة` : `🎁 Free ${days}-day trial — no card needed`;
+  // Update suc-p1
+  const sp1 = document.getElementById('suc-p1');
+  if (sp1) sp1.textContent = t('sucP1', {n: days});
+  updateModeUI(_settings.mode || 'free');
+  updateChatBar();
+}
+
+function setT(id, key) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = t(key);
+}
+
+function buildQQs() {
+  const qq = document.getElementById('qqs');
+  if (!qq) return;
+  const qs = ['q1','q2','q3','q4','q5','q6'];
+  const rawQ = ['كيف أجدد إذن العمل؟','إجراءات التحويل الوظيفي؟','شهادة السجل التجاري؟','موعد التأمينات الاجتماعية؟','تجديد الإقامة الخطوات؟','تصريح عمل جديد للوافد؟'];
+  const rawQen = ['How to renew work permit?','Job transfer procedures?','Commercial register certificate?','Social insurance appointment?','Residency renewal steps?','New work authorization for expat?'];
+  qq.innerHTML = qs.map((q,i) => `<button class="qbtn" onclick="askQ('${_lang==='ar'?rawQ[i]:rawQen[i]}')">${t(q)}</button>`).join('');
+}
+
+// ================================================================
+// DEVICE FINGERPRINT
+// ================================================================
+function getDeviceId() {
+  let id = localStorage.getItem('_did');
+  if (!id) {
+    const nav = navigator;
+    const raw = [nav.userAgent, nav.language, screen.width, screen.height, screen.colorDepth, nav.hardwareConcurrency, nav.platform, Intl.DateTimeFormat().resolvedOptions().timeZone].join('|');
+    let hash = 0;
+    for (let i = 0; i < raw.length; i++) { hash = ((hash << 5) - hash) + raw.charCodeAt(i); hash |= 0; }
+    id = 'dev_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+    localStorage.setItem('_did', id);
+  }
+  return id;
+}
+
+async function checkDeviceLocked() {
+  const did = getDeviceId();
+  try {
+    const snap = await fbDoc(`devices/${did}`);
+    return snap && snap.locked === true;
+  } catch(e) { return false; }
+}
+
+async function lockDevice(email) {
+  const did = getDeviceId();
+  try {
+    await fbSet(`devices/${did}`, { email, lockedAt: new Date().toISOString(), locked: true });
+  } catch(e) {}
+}
+
+// ================================================================
+// FIREBASE HELPERS
+// ================================================================
+function fb() { return window._fb; }
+
+async function waitFb() {
+  let tries = 0;
+  while (!window._fb && tries < 100) {
+    await new Promise(r => setTimeout(r, 100));
+    tries++;
+  }
+  if (!window._fb) throw new Error('Firebase غير متصل — أعد تحميل الصفحة');
+  return window._fb;
+}
+
+async function fbDoc(path) {
+  const { db, doc, getDoc } = await waitFb();
+  const parts = path.split('/');
+  const snap = await getDoc(doc(db, ...parts));
+  return snap.exists() ? snap.data() : null;
+}
+
+async function fbSet(path, data) {
+  const { db, doc, setDoc } = await waitFb();
+  await setDoc(doc(db, ...path.split('/')), data, { merge: true });
+}
+
+async function fbCollection(col) {
+  const { db, collection, getDocs } = await waitFb();
+  const snap = await getDocs(collection(db, col));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function fbAdd(col, data) {
+  const { db, collection, addDoc } = await waitFb();
+  const ref = await addDoc(collection(db, col), data);
+  return ref.id;
+}
+
+async function fbDelete(col, id) {
+  const { db, doc, deleteDoc } = await waitFb();
+  await deleteDoc(doc(db, col, id));
+}
+async function fbDoc(path) {
+  const { db, doc, getDoc } = await waitFb();
+  const parts = path.split('/');
+  const snap = await getDoc(doc(db, ...parts));
+  return snap.exists() ? snap.data() : null;
+}
+
+async function fbSet(path, data) {
+  const { db, doc, setDoc } = await waitFb();
+  await setDoc(doc(db, ...path.split('/')), data, { merge: true });
+}
+
+// ================================================================
+// SCREENS
+// ================================================================
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+}
+window.showScreen = showScreen;
+
+function switchPanel(p) {
+  document.querySelectorAll('.panel').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e => e.classList.remove('active'));
+  const panel = document.getElementById('panel-' + p);
+  const tab   = document.getElementById('tab-' + p);
+  if (panel) panel.classList.add('active');
+  if (tab)   tab.classList.add('active');
+  if (p === 'admin')     loadAdminData();
+  if (p === 'announce')  loadAnnouncements();
+  if (p === 'calendar')  loadTasks();
+  if (p === 'history')   loadHistory();
+  if (p === 'favorites') loadFavorites();
+}
+
+function switchSub(sub) {
+  document.querySelectorAll('.sub-panel').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.si').forEach(e => e.classList.remove('active'));
+  document.getElementById('sub-' + sub).classList.add('active');
+  document.querySelector(`.si[data-sub="${sub}"]`).classList.add('active');
+  if (sub === 'overview')       loadOverview();
+  else if (sub === 'users')     loadUsers();
+  else if (sub === 'locations') loadLocations();
+  else if (sub === 'data')      loadDataInfo();
+  else if (sub === 'announcements') loadAdminAnnouncements();
+  else if (sub === 'questions') loadAdminQuestions();
+  else if (sub === 'templates')  { loadTemplates().then(renderAdminTemplates); }
+  else if (sub === 'settings')  { loadSettings().then(fillSettingsForm); }
+}
+
+// ================================================================
+// AUTH
+// ================================================================
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-err');
+  const btn   = document.getElementById('login-btn');
+  errEl.style.display = 'none';
+  if (!email || !pass) { errEl.style.display='block'; errEl.textContent='أدخل الإيميل وكلمة المرور'; return; }
+  showOv(t('loggingIn'));
+  if (btn) btn.disabled = true;
+  try {
+    const _fbAuth = await waitFb();
+    await _fbAuth.signInWithEmailAndPassword(_fbAuth.auth, email, pass);
+  } catch(e) {
+    hideOv();
+    if (btn) btn.disabled = false;
+    errEl.style.display = 'block';
+    if (e.message && e.message.includes('Firebase')) {
+      errEl.textContent = e.message;
+    } else {
+      errEl.textContent = t('loginErr');
+    }
+  }
+}
+
+async function doLogout() {
+  document.getElementById('logout-confirm').classList.add('show');
+}
+function closeLogoutConfirm() {
+  document.getElementById('logout-confirm').classList.remove('show');
+}
+async function confirmLogout() {
+  closeLogoutConfirm();
+  const _fbL = await waitFb();
+  await _fbL.signOut(_fbL.auth);
+  _chatHistory = [];
+  showScreen('landing');
+}
+
+async function onLoggedIn(profile) {
+  hideOv();
+  await loadSettings();
+
+  if (profile.role !== 'admin') {
+    const trialDays   = _settings.trialDays || 10;
+    const created     = new Date(profile.created);
+    const now         = new Date();
+    const trialPassed = Math.floor((now - created) / 86400000);
+    const trialLeft   = trialDays - trialPassed;
+    const mode        = _settings.mode || 'free';
+
+    // Check paid subscription days
+    let subDaysLeft = 0;
+    if (profile.paid && profile.paidUntil) {
+      subDaysLeft = Math.ceil((new Date(profile.paidUntil) - now) / 86400000);
+    }
+    const subActive = profile.paid && subDaysLeft > 0;
+    const isAr = _lang === 'ar';
+    const chip  = document.getElementById('trial-days-chip');
+
+    if (subActive) {
+      // Show subscription days remaining
+      chip.textContent     = isAr ? `🔔 ${subDaysLeft} يوم متبقي في الاشتراك` : `🔔 ${subDaysLeft} days left`;
+      chip.style.display   = 'inline-block';
+      chip.style.background = subDaysLeft <= 5 ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.12)';
+      chip.style.color      = subDaysLeft <= 5 ? '#fca5a5' : '#86efac';
+      chip.style.border     = subDaysLeft <= 5 ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(34,197,94,0.25)';
+    } else if (!profile.paid && trialLeft > 0) {
+      // Show trial days remaining
+      chip.textContent   = isAr ? `🎁 ${trialLeft} يوم تجربة` : `🎁 ${trialLeft} trial days`;
+      chip.style.display = 'inline-block';
+    }
+
+    // Sub expiry notification — send email if <= 3 days left and not notified today
+    if (subActive && subDaysLeft <= 3) {
+      const today = new Date().toISOString().split('T')[0];
+      if (profile.expiryNotifDate !== today) {
+        try {
+          await fbSet(`users/${profile.uid || window._currentUser.uid}`, { expiryNotifDate: today });
+          const { ejsService, ejsTemplate, ejsPublicKey, name: pName } = _settings;
+          if (ejsService && ejsTemplate && ejsPublicKey) {
+            emailjs.init(ejsPublicKey);
+            emailjs.send(ejsService, ejsTemplate, {
+              to_email: profile.email,
+              user_name: profile.name,
+              user_pass: '',
+              platform_name: pName || 'المرشد للمعاملات الحكومية',
+              login_url: `⚠️ اشتراكك ينتهي خلال ${subDaysLeft} يوم — جدّد الآن لتستمر في الخدمة`,
+            }).catch(()=>{});
+          }
+        } catch(e){}
+      }
+    }
+    const subExpired   = profile.paid && subDaysLeft <= 0;
+    const trialExpired = !profile.paid && trialLeft <= 0;
+    if (mode === 'paid' && (subExpired || trialExpired)) {
+      document.getElementById('pw-price').textContent = _settings.price || '5';
+      showScreen('paywall');
+      return;
+    }
+  }
+
+  document.getElementById('tb-user').textContent = profile.name || profile.email;
+  document.getElementById('tb-role').textContent = profile.role === 'admin' ? t('adminRole') : t('userRole');
+  if (profile.role === 'admin') {
+    document.querySelectorAll('.admin-only').forEach(e => e.style.display = 'flex');
+  }
+  // Show app immediately — load chunks in background
+  loadLocationsCache();
+  loadTemplates();
+  applyLang();
+  showScreen('app');
+  updateChatBar();
+  // Load chunks in background after app is visible
+  loadChunks().then(() => {
+    updateChatBar();
+    loadAnnouncements();
+  });
+}
+window.onLoggedIn = onLoggedIn;
+
+// ================================================================
+// SETTINGS
+// ================================================================
+async function loadSettings() {
+  try {
+    const s = await fbDoc('system/settings');
+    _settings = s || {};
+    const name = _settings.name || 'المرشد للمعاملات الحكومية';
+    const el = document.getElementById('tb-name');
+    if (el) el.textContent = name;
+  } catch(e) { _settings = {}; }
+}
+
+async function saveSettings() {
+  const s = {
+    apiKey:       document.getElementById('s-api-key').value.trim(),
+    name:         document.getElementById('s-name').value.trim(),
+    price:        document.getElementById('s-price').value.trim(),
+    trialDays:    parseInt(document.getElementById('s-trial-days').value) || 10,
+    waPhone:      document.getElementById('s-wa-phone').value.trim(),
+    dailyLimit:   parseInt(document.getElementById('s-daily-limit').value) || 30,
+    ejsService:   document.getElementById('s-ejs-srv').value.trim(),
+    ejsTemplate:  document.getElementById('s-ejs-tpl').value.trim(),
+    ejsPublicKey: document.getElementById('s-ejs-key').value.trim(),
+    mode:         _settings.mode || 'free',
+    totalMsgs:    _settings.totalMsgs || 0,
+  };
+  showOv(t('saving'));
+  try {
+    await fbSet('system/settings', s);
+    _settings = {..._settings, ...s};
+    hideOv(); toast(t('toastSaved'), 'ok');
+    const el = document.getElementById('tb-name');
+    if (el) el.textContent = s.name || 'المرشد للمعاملات الحكومية';
+  } catch(e) { hideOv(); toast('❌ ' + e.message, 'err'); }
+}
+
+function fillSettingsForm() {
+  const s = _settings;
+  if (s.apiKey)       document.getElementById('s-api-key').value = s.apiKey;
+  if (s.name)         document.getElementById('s-name').value = s.name;
+  if (s.price)        document.getElementById('s-price').value = s.price;
+  if (s.trialDays)    document.getElementById('s-trial-days').value = s.trialDays;
+  if (s.waPhone)      document.getElementById('s-wa-phone').value = s.waPhone;
+  if (s.dailyLimit)   document.getElementById('s-daily-limit').value = s.dailyLimit;
+  if (s.ejsService)   document.getElementById('s-ejs-srv').value = s.ejsService;
+  if (s.ejsTemplate)  document.getElementById('s-ejs-tpl').value = s.ejsTemplate;
+  if (s.ejsPublicKey) document.getElementById('s-ejs-key').value = s.ejsPublicKey;
+  updateModeUI(s.mode || 'free');
+}
+
+async function setMode(mode) {
+  showOv('...');
+  try {
+    await fbSet('system/settings', { mode });
+    _settings.mode = mode;
+    updateModeUI(mode);
+    hideOv();
+    toast(mode === 'free' ? t('toastModeFree') : t('toastModePaid'), 'ok');
+  } catch(e) { hideOv(); toast('❌ ' + e.message, 'err'); }
+}
+
+function updateModeUI(mode) {
+  const fBtn = document.getElementById('mode-free-btn');
+  const pBtn = document.getElementById('mode-paid-btn');
+  const st   = document.getElementById('mode-status');
+  if (!fBtn) return;
+  if (mode === 'free') {
+    fBtn.className = 'btn btn-gold'; pBtn.className = 'btn btn-ghost';
+    if (st) st.textContent = t('modeStatusFree');
+  } else {
+    fBtn.className = 'btn btn-ghost'; pBtn.className = 'btn btn-gold';
+    if (st) st.textContent = t('modeStatusPaid');
+  }
+}
+
+// ================================================================
+// SUBSCRIBE / TRIAL
+// ================================================================
+async function goToTrial() {
+  const name  = document.getElementById('sub-name').value.trim();
+  const email = document.getElementById('sub-email').value.trim().toLowerCase();
+  const phone = document.getElementById('sub-phone').value.trim();
+  const pass  = document.getElementById('sub-pass').value;
+  const pass2 = document.getElementById('sub-pass2').value;
+  const errEl = document.getElementById('sub-err');
+  errEl.style.display = 'none';
+
+  if (!name || !email || !email.includes('@')) {
+    errEl.style.display = 'block'; errEl.textContent = t('errFillAll'); return;
+  }
+  if (!pass || pass.length < 8) {
+    errEl.style.display = 'block'; errEl.textContent = _lang === 'ar' ? 'كلمة المرور يجب أن تكون 8 أحرف على الأقل' : 'Password must be at least 8 characters'; return;
+  }
+  if (pass !== pass2) {
+    errEl.style.display = 'block'; errEl.textContent = _lang === 'ar' ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match'; return;
+  }
+
+  showOv(t('creatingAcc'));
+  const locked = await checkDeviceLocked();
+  if (locked) {
+    hideOv();
+    errEl.style.display = 'block';
+    errEl.textContent = t('errDeviceLocked');
+    return;
+  }
+
+  await createAccount(name, email, phone, false, pass);
+}
+
+function genPass() {
+  const c = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from({length:8}, () => c[Math.floor(Math.random()*c.length)]).join('');
+}
+
+async function createAccount(name, email, phone='', paid=false, pass='') {
+  if (!pass) pass = genPass(); // fallback for admin-created accounts
+  showOv(t('creatingAcc'));
+  try {
+    const _fbc = await waitFb();
+    const uc = await _fbc.createUserWithEmailAndPassword(_fbc.auth, email, pass);
+    await fbSet(`users/${uc.user.uid}`, {
+      name, email, phone, role:'user', active:true, paid,
+      created: new Date().toISOString()
+    });
+    await lockDevice(email);
+    await _fbc.signOut(_fbc.auth);
+    _successEmail = email;
+    _successPass  = pass;
+    document.getElementById('suc-email').textContent = email;
+    document.getElementById('suc-pass').textContent  = pass;
+    const days = _settings.trialDays || 10;
+    document.getElementById('suc-p1').textContent = t('sucP1', {n: days});
+    hideOv();
+    showScreen('success');
+    sendWelcomeEmail(name, email, pass);
+  } catch(e) {
+    hideOv();
+    const errEl = document.getElementById('sub-err');
+    if (e.code === 'auth/email-already-in-use') {
+      errEl.style.display = 'block';
+      errEl.textContent = t('errEmailUsed');
+    } else toast('❌ ' + e.message, 'err');
+  }
+}
+
+async function doForgotPass() {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email || !email.includes('@')) {
+    toast(_lang === 'ar' ? 'اكتب إيميلك الأول ثم اضغط نسيت كلمة المرور' : 'Enter your email first', 'err');
+    return;
+  }
+  showOv(_lang === 'ar' ? 'جاري الإرسال...' : 'Sending...');
+  try {
+    const { sendPasswordResetEmail } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    const _fbfp = await waitFb();
+    await sendPasswordResetEmail(_fbfp.auth, email);
+    hideOv();
+    toast(_lang === 'ar' ? '📧 تم إرسال رابط إعادة تعيين كلمة المرور على إيميلك' : '📧 Password reset email sent!', 'ok');
+  } catch(e) {
+    hideOv();
+    toast(_lang === 'ar' ? 'الإيميل غير موجود في النظام' : 'Email not found', 'err');
+  }
+}
+
+function doLoginAfterSuccess() {
+  document.getElementById('login-email').value = _successEmail;
+  document.getElementById('login-pass').value  = _successPass;
+  showScreen('login');
+  doLogin();
+}
+
+function showPayModal() {
+  const price  = _settings.price  || '5';
+  const phone  = _settings.waPhone || '60020313';
+  const isAr   = _lang === 'ar';
+
+  // Update modal content
+  document.getElementById('modal-amount').textContent = price;
+  document.getElementById('modal-phone').textContent  = phone;
+  document.getElementById('modal-wa-num').textContent = phone;
+
+  if (!isAr) {
+    document.getElementById('modal-title').textContent    = '💳 Complete Subscription';
+    document.getElementById('modal-sub').textContent      = 'Follow the steps below';
+    document.getElementById('step1-title').textContent    = 'Transfer the subscription amount';
+    document.getElementById('step1-desc').innerHTML       = 'Via <strong style="color:var(--gold2)">Wamidh</strong> or any bank transfer to:';
+    document.getElementById('modal-amount-label').innerHTML = `Amount: <strong style="color:var(--gold2)">${price}</strong> <span>KWD / month</span>`;
+    document.getElementById('modal-curr').textContent     = 'KWD / month';
+    document.getElementById('step2-title').textContent    = 'Screenshot the receipt';
+    document.getElementById('step2-desc').textContent     = 'Take a photo or screenshot of the transfer confirmation';
+    document.getElementById('step3-title').textContent    = 'Send it on WhatsApp';
+    document.getElementById('step3-desc').textContent     = 'Send the receipt with your name and email to:';
+    document.getElementById('modal-wa-label').textContent = 'Tap to open WhatsApp';
+    document.getElementById('modal-note').textContent     = '✅ After reviewing the transfer, your account will be activated within a few hours and you will receive a confirmation message';
+    document.getElementById('modal-close-btn').textContent = 'Close';
+  } else {
+    document.getElementById('modal-title').textContent    = '💳 إتمام الاشتراك';
+    document.getElementById('modal-sub').textContent      = 'اتبع الخطوات أدناه';
+    document.getElementById('step1-title').textContent    = 'حوّل مبلغ الاشتراك';
+    document.getElementById('step1-desc').innerHTML       = 'عبر تطبيق <strong style="color:var(--gold2)">ومض</strong> أو أي تحويل بنكي إلى الرقم:';
+    document.getElementById('modal-amount-label').innerHTML = `المبلغ: <strong style="color:var(--gold2)">${price}</strong> <span id="modal-curr">دينار كويتي / شهر</span>`;
+    document.getElementById('step2-title').textContent    = 'صوّر إيصال التحويل';
+    document.getElementById('step2-desc').textContent     = 'التقط صورة للإيصال أو screenshot لتأكيد التحويل';
+    document.getElementById('step3-title').textContent    = 'أرسل الصورة على واتساب';
+    document.getElementById('step3-desc').textContent     = 'أرسل صورة الإيصال مع اسمك وإيميلك للرقم:';
+    document.getElementById('modal-wa-label').textContent = 'اضغط للفتح على واتساب';
+    document.getElementById('modal-note').textContent     = '✅ بعد مراجعة التحويل، سيتم تفعيل حسابك خلال ساعات قليلة وتصلك رسالة تأكيد';
+    document.getElementById('modal-close-btn').textContent = 'إغلاق';
+  }
+
+  // WhatsApp link
+  const waMsg = isAr
+    ? `مرحباً، أريد الاشتراك في نظام المرشد للمعاملات الحكومية. أرفق إيصال التحويل.`
+    : `Hello, I want to subscribe to Kuwait Mandoob system. Attaching transfer receipt.`;
+  document.getElementById('whatsapp-link').href = `https://wa.me/965${phone.replace(/\D/g,'')}?text=${encodeURIComponent(waMsg)}`;
+
+  document.getElementById('pay-modal').style.display = 'flex';
+}
+
+function closePayModal() {
+  document.getElementById('pay-modal').style.display = 'none';
+}
+
+// Close modal on backdrop click
+document.getElementById('pay-modal').addEventListener('click', function(e) {
+  if (e.target === this) closePayModal();
+});
+
+async function sendWelcomeEmail(name, email, pass) {
+  const { ejsService, ejsTemplate, ejsPublicKey, name: pName } = _settings;
+  if (!ejsService || !ejsTemplate || !ejsPublicKey) return;
+  try {
+    emailjs.init(ejsPublicKey);
+    await emailjs.send(ejsService, ejsTemplate, {
+      to_email: email, user_name: name, user_pass: pass,
+      platform_name: pName || 'المرشد للمعاملات الحكومية',
+      login_url: window.location.href.split('?')[0]
+    });
+  } catch(e) { console.warn('Email failed:', e); }
+}
+
+async function testEmail() {
+  const { ejsService, ejsTemplate, ejsPublicKey } = _settings;
+  if (!ejsService || !ejsTemplate || !ejsPublicKey) { toast(t('errNoEjs'), 'err'); return; }
+  showOv('...');
+  try {
+    emailjs.init(ejsPublicKey);
+    await emailjs.send(ejsService, ejsTemplate, {
+      to_email: window._currentUser.email, user_name: window._currentUser.name,
+      user_pass: 'Test1234', platform_name: _settings.name || 'المرشد للمعاملات الحكومية',
+      login_url: window.location.href.split('?')[0]
+    });
+    hideOv(); toast(t('toastEmailOk'), 'ok');
+  } catch(e) { hideOv(); toast('❌ ' + (e.text || e.message), 'err'); }
+}
+
+// After Stripe redirect — mark user as paid
+async function checkUrlParams() {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('paid') !== '1') return;
+  window.history.replaceState({}, '', window.location.pathname);
+  const email = decodeURIComponent(p.get('email') || sessionStorage.getItem('p_email') || '');
+  const name  = decodeURIComponent(p.get('name')  || sessionStorage.getItem('p_name')  || (email ? email.split('@')[0] : ''));
+  if (!email) return;
+  showOv('...');
+  try {
+    const { db, collection, getDocs, query, where } = await waitFb();
+    const q    = query(collection(db, 'users'), where('email', '==', email.toLowerCase()));
+    const snap = await getDocs(q);
+    if (!snap.empty) {
+      await fbSet(`users/${snap.docs[0].id}`, { paid: true });
+      hideOv();
+      document.getElementById('suc-email').textContent = email;
+      document.getElementById('suc-pass').textContent  = '(كلمة مرورك القديمة)';
+      _successEmail = email; _successPass = '';
+      showScreen('success');
+    } else {
+      hideOv();
+      await createAccount(name, email, '', true);
+    }
+  } catch(e) { hideOv(); toast('❌ ' + e.message, 'err'); }
+}
+
+// ================================================================
+// USERS ADMIN
+// ================================================================
+async function addUser() {
+  const name  = document.getElementById('nu-name').value.trim();
+  const email = document.getElementById('nu-email').value.trim().toLowerCase();
+  const pass  = document.getElementById('nu-pass').value.trim();
+  const role  = document.getElementById('nu-role').value;
+  if (!name || !email || !pass) { toast(t('errFillAll'), 'err'); return; }
+  showOv('...');
+  try {
+    const _fbu = await waitFb();
+    const uc = await _fbu.createUserWithEmailAndPassword(_fbu.auth, email, pass);
+    await fbSet(`users/${uc.user.uid}`, { name, email, role, active:true, paid: role==='admin', created: new Date().toISOString() });
+    hideOv(); toast(t('toastAdded'), 'ok');
+    clearAddForm(); location.reload();
+  } catch(e) { hideOv(); toast('❌ ' + e.message, 'err'); }
+}
+
+function clearAddForm() {
+  ['nu-name','nu-email','nu-pass'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nu-role').value = 'user';
+}
+
+async function loadUsers() {
+  showOv('...');
+  try {
+    const users = await fbCollection('users');
+    const trialDays = _settings.trialDays || 10;
+    hideOv();
+    const tbody = document.getElementById('users-tb');
+    tbody.innerHTML = '';
+    users.forEach(u => {
+      const trialDaysPassed = Math.floor((new Date() - new Date(u.created)) / 86400000);
+      const trialLeft = trialDays - trialDaysPassed;
+
+      // Sub days remaining
+      let subDaysLeft = 0;
+      if (u.paid && u.paidUntil) {
+        subDaysLeft = Math.ceil((new Date(u.paidUntil) - new Date()) / 86400000);
+      }
+      const subActive = u.paid && subDaysLeft > 0;
+
+      let subBadge = '';
+      if (u.role === 'admin') {
+        subBadge = `<span class="bdg bdg-admin">${t('adminRole')}</span>`;
+      } else if (subActive) {
+        const isAr = _lang === 'ar';
+        subBadge = `<span class="bdg bdg-paid">✅ ${subDaysLeft} ${isAr?'يوم':'days'}</span>`;
+      } else if (u.paid && subDaysLeft <= 0) {
+        subBadge = `<span class="bdg bdg-expired">${t('subExpired')}</span>`;
+      } else if (trialLeft > 0) {
+        subBadge = `<span class="bdg bdg-trial">${t('subTrial')} (${trialLeft})</span>`;
+      } else {
+        subBadge = `<span class="bdg bdg-expired">${t('subExpired')}</span>`;
+      }
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${u.name||'—'}</td>
+        <td style="direction:ltr;font-size:12px">${u.phone||'—'}</td>
+        <td style="direction:ltr;text-align:right;font-size:11px">${u.email}</td>
+        <td><span class="bdg ${u.active?'bdg-on':'bdg-off'}">${u.active?t('statusActive'):t('statusInactive')}</span></td>
+        <td>${subBadge}</td>
+        <td>${u.role!=='admin'?`<div class="arow">
+          <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="togglePaid('${u.id}',true)">${subActive?'🔄 تجديد':'✅ تفعيل'}</button>
+          ${subActive||u.paid?`<button class="btn btn-red" style="padding:3px 8px;font-size:11px" onclick="togglePaid('${u.id}',false)">إلغاء</button>`:''}
+          <button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="toggleUser('${u.id}',${!u.active})">${u.active?t('btnDeactivate'):t('btnActivate')}</button>
+        </div>`:'—'}</td>`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) { hideOv(); toast('❌ ' + e.message, 'err'); }
+}
+
+async function toggleUser(uid, active) {
+  showOv('...');
+  try { await fbSet(`users/${uid}`, { active }); hideOv(); toast(active?'✅':'⛔', 'ok'); loadUsers(); }
+  catch(e) { hideOv(); toast('❌ '+e.message, 'err'); }
+}
+
+async function togglePaid(uid, paid) {
+  showOv('...');
+  try {
+    if (paid) {
+      // Set paidUntil to 30 days from now
+      const paidUntil = new Date(Date.now() + 30 * 86400000).toISOString();
+      await fbSet(`users/${uid}`, { paid: true, paidUntil });
+      hideOv(); toast('✅ تم تفعيل الاشتراك — ينتهي بعد 30 يوم', 'ok');
+    } else {
+      await fbSet(`users/${uid}`, { paid: false, paidUntil: null });
+      hideOv(); toast('⚠️ تم إلغاء الاشتراك', 'ok');
+    }
+    loadUsers();
+  } catch(e) { hideOv(); toast('❌ '+e.message, 'err'); }
+}
+
+// ================================================================
+// DATA
+// ================================================================
+async function loadChunks() {
+  try {
+    const meta = await fbDoc('system/chunks');
+    if (!meta) { _chunks = []; return; }
+
+    // Check cache
+    const cacheKey = 'chunks_v_' + (meta.updatedAt || '');
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      _chunks = JSON.parse(cached);
+      return;
+    }
+
+    // Clear old cache keys
+    Object.keys(localStorage).filter(k => k.startsWith('chunks_v_')).forEach(k => localStorage.removeItem(k));
+
+    // New multi-batch format
+    if (meta.batches && meta.batches > 1) {
+      _chunks = [];
+      for (let i = 0; i < meta.batches; i++) {
+        const batch = await fbDoc(`system/chunks_${i}`);
+        if (batch && batch.data) _chunks = _chunks.concat(batch.data);
+      }
+    } else if (meta.data) {
+      _chunks = meta.data || [];
+    } else if (meta.batches === 1) {
+      const batch = await fbDoc('system/chunks_0');
+      _chunks = batch ? (batch.data || []) : [];
+    } else {
+      _chunks = [];
+    }
+
+    // Save to cache
+    try { localStorage.setItem(cacheKey, JSON.stringify(_chunks)); } catch(e) {}
+  } catch(e) { _chunks = []; }
+}
+
+async function uploadData(input) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  showOv(t('uploading'));
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const newChunks = chunkText(e.target.result);
+      const combined = [..._chunks, ...newChunks];
+      // Split into batches of 200 chunks per document (safe for Firestore 1MB limit)
+      const BATCH = 200;
+      const batches = [];
+      for (let i = 0; i < combined.length; i += BATCH) {
+        batches.push(combined.slice(i, i + BATCH));
+      }
+      showOv(`جاري الرفع... (${newChunks.length} قطعة جديدة)`);
+      // Save metadata
+      await fbSet('system/chunks', {
+        count: combined.length,
+        batches: batches.length,
+        updatedAt: new Date().toISOString()
+      });
+      // Save each batch
+      for (let i = 0; i < batches.length; i++) {
+        showOv(`جاري الرفع... ${i+1}/${batches.length}`);
+        await fbSet(`system/chunks_${i}`, { data: batches[i] });
+      }
+      // Load all chunks into memory
+      _chunks = combined;
+      hideOv();
+      document.getElementById('upload-info').innerHTML = `<span style="color:#86efac">✅ تمت إضافة ${newChunks.length} قطعة! الإجمالي: ${combined.length}</span>`;
+      updateChatBar(); loadDataInfo();
+    } catch(err) {
+      hideOv();
+      toast('❌ ' + err.message, 'err');
+      console.error('Upload error:', err);
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function fetchUrlData() {
+  const url = document.getElementById('fetch-url').value.trim();
+  const topic = document.getElementById('fetch-topic').value.trim();
+  if (!url) { toast('حط رابط الموقع الأول', 'err'); return; }
+  const infoEl = document.getElementById('fetch-info');
+  infoEl.innerHTML = '<span style="color:var(--gold2)">⏳ جاري جلب المحتوى...</span>';
+  showOv('جاري جلب المحتوى...');
+  try {
+    let text = '';
+
+    // Primary: allorigins proxy (works with most sites)
+    try {
+      const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+      const res = await fetch(proxyUrl);
+      if (res.ok) {
+        const html = await res.text();
+        const tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        tmp.querySelectorAll('script,style,nav,footer,header,noscript').forEach(el => el.remove());
+        text = (tmp.innerText || tmp.textContent || '').replace(/\s+/g, ' ').trim();
+      }
+    } catch(e1) {}
+
+    // Fallback: Jina reader
+    if (!text || text.length < 100) {
+      try {
+        const jinaUrl = 'https://r.jina.ai/' + url;
+        const res2 = await fetch(jinaUrl, { headers: { 'Accept': 'text/plain' } });
+        if (res2.ok) text = await res2.text();
+      } catch(e2) {}
+    }
+
+    if (!text || text.length < 100) throw new Error('مش قادر أجلب المحتوى — جرب رابط صفحة تانية من نفس الموقع');
+
+    // Prepend topic label if provided
+    if (topic) text = `=== ${topic} ===\n\n` + text;
+
+    const newChunks = chunkText(text);
+    if (newChunks.length === 0) throw new Error('مش لاقي محتوى مفيد في الصفحة');
+
+    const combined = [..._chunks, ...newChunks];
+    const BATCH = 200;
+    const batches = [];
+    for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
+
+    await fbSet('system/chunks', { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() });
+    for (let i = 0; i < batches.length; i++) {
+      showOv(`جاري الحفظ... ${i+1}/${batches.length}`);
+      await fbSet(`system/chunks_${i}`, { data: batches[i] });
+    }
+
+    _chunks = combined;
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith('chunks_v_')).forEach(k => localStorage.removeItem(k));
+      localStorage.setItem('chunks_v_' + new Date().toISOString(), JSON.stringify(_chunks));
+    } catch(e) {}
+
+    hideOv();
+    infoEl.innerHTML = `<span style="color:#86efac">✅ تم جلب ${newChunks.length} قطعة${topic ? ' عن "'+topic+'"' : ''}! الإجمالي: ${combined.length}</span>`;
+    document.getElementById('fetch-url').value = '';
+    updateChatBar(); loadDataInfo();
+  } catch(err) {
+    hideOv();
+    infoEl.innerHTML = `<span style="color:#fca5a5">❌ ${err.message}</span>`;
+  }
+}
+
+function loadDataInfo() {
+  const el = document.getElementById('chunks-info');
+  if (el) el.textContent = _chunks.length > 0 ? t('chatInfo', {n:_chunks.length}) : t('chatNoData');
+}
+
+function chunkText(text) {
+  const lines = text.split('\n').filter(l => l.trim() && l.length > 20);
+  const chunks = [];
+  for (let i = 0; i < lines.length; i += 25) {
+    const c = lines.slice(i, i+25).join('\n');
+    if (c.length > 80) chunks.push(c);
+  }
+  return chunks;
+}
+
+// ================================================================
+// LOCATIONS
+// ================================================================
+async function loadLocationsCache() {
+  try { _locations = await fbCollection('locations'); } catch(e) { _locations = []; }
+}
+
+async function loadLocations() {
+  showOv('...');
+  try { _locations = await fbCollection('locations'); hideOv(); renderLocations(); }
+  catch(e) { hideOv(); toast('❌ '+e.message, 'err'); }
+}
+
+function renderLocations() {
+  const el = document.getElementById('locs-list');
+  if (!_locations.length) { el.innerHTML = `<p style="color:var(--gray);font-family:Almarai,sans-serif;font-size:13px;padding:10px 0">${t('noLocsAdded')}</p>`; return; }
+  el.innerHTML = '<div style="display:flex;flex-direction:column;gap:10px;margin-top:13px">' +
+    _locations.map(l => `<div class="card" style="padding:12px 15px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <strong style="color:var(--gold2);font-size:13px">${l.name}</strong>
+        <button class="btn btn-red" style="padding:3px 8px;font-size:11px" onclick="deleteLocation('${l.id}')">${t('toastDeleted').replace('🗑️ ','')}</button>
+      </div>
+      ${l.url?`<div style="font-size:12px;color:var(--gray);font-family:Almarai,sans-serif">🔗 ${l.url}</div>`:''}
+      ${l.address?`<div style="font-size:12px;color:var(--gray);font-family:Almarai,sans-serif">📍 ${l.address}</div>`:''}
+      ${l.keywords?`<div style="font-size:11px;color:rgba(201,168,76,.5);font-family:Almarai,sans-serif;margin-top:3px">🏷️ ${l.keywords}</div>`:''}
+    </div>`).join('') + '</div>';
+}
+
+async function addLocation() {
+  const name = document.getElementById('loc-name').value.trim();
+  if (!name) { toast(t('errFillAll'), 'err'); return; }
+  showOv('...');
+  try {
+    const id = await fbAdd('locations', {
+      name, url: document.getElementById('loc-url').value.trim(),
+      address: document.getElementById('loc-addr').value.trim(),
+      keywords: document.getElementById('loc-keys').value.trim(),
+      notes: document.getElementById('loc-notes').value.trim(),
+    });
+    _locations.push({ id, name });
+    hideOv(); toast(t('toastAdded'), 'ok');
+    ['loc-name','loc-url','loc-addr','loc-keys','loc-notes'].forEach(i => document.getElementById(i).value = '');
+    loadLocations();
+  } catch(e) { hideOv(); toast('❌ '+e.message, 'err'); }
+}
+
+async function deleteLocation(id) {
+  showOv('...');
+  try {
+    await fbDelete('locations', id);
+    _locations = _locations.filter(l => l.id !== id);
+    hideOv(); toast(t('toastDeleted'), 'ok'); renderLocations();
+  } catch(e) { hideOv(); toast('❌ '+e.message, 'err'); }
+}
+
+function findRelatedLocs(q) {
+  const ql = q.toLowerCase();
+  return _locations.filter(l => {
+    const kws = (l.keywords||'').split(',').map(k=>k.trim());
+    return kws.some(k => k && ql.includes(k.toLowerCase())) || ql.includes((l.name||'').toLowerCase());
+  });
+}
+
+// ================================================================
+// OVERVIEW
+// ================================================================
+async function loadOverview() {
+  try {
+    const [users, chunks, locs] = await Promise.all([fbCollection('users'), fbDoc('system/chunks'), fbCollection('locations')]);
+    const active = users.filter(u => u.active).length;
+    const cCount = chunks ? (chunks.count || 0) : 0;
+    document.getElementById('st-users').textContent = active;
+    document.getElementById('st-chunks').textContent = cCount;
+    document.getElementById('st-locs').textContent = locs.length;
+    document.getElementById('st-msgs').textContent = _settings.totalMsgs || 0;
+    document.getElementById('total-users').textContent = users.length;
+    document.getElementById('api-status').innerHTML = `<span class="bdg ${_settings.apiKey?'bdg-on':'bdg-off'}">${_settings.apiKey?'✅':'❌'}</span>`;
+    document.getElementById('data-status').innerHTML = `<span class="bdg ${cCount>0?'bdg-on':'bdg-off'}">${cCount>0?cCount:'—'}</span>`;
+
+    // Expiring soon (within 7 days)
+    const now = new Date();
+    const expiring = users.filter(u => {
+      if (!u.paid || !u.paidUntil) return false;
+      const daysLeft = Math.ceil((new Date(u.paidUntil) - now) / 86400000);
+      return daysLeft >= 0 && daysLeft <= 7;
+    }).sort((a,b) => new Date(a.paidUntil) - new Date(b.paidUntil));
+
+    const expiringSection = document.getElementById('expiring-section');
+    if (expiring.length > 0) {
+      expiringSection.style.display = 'block';
+      const isAr = _lang === 'ar';
+      document.getElementById('expiring-tb').innerHTML =
+        `<tr><th>${isAr?'الاسم':'Name'}</th><th>${isAr?'الهاتف':'Phone'}</th><th>${isAr?'ينتهي في':'Expires in'}</th><th>${isAr?'إجراء':'Action'}</th></tr>` +
+        expiring.map(u => {
+          const d = Math.ceil((new Date(u.paidUntil) - now) / 86400000);
+          const color = d <= 3 ? '#fca5a5' : '#fcd34d';
+          return `<tr>
+            <td>${u.name||'—'}</td>
+            <td style="direction:ltr">${u.phone||'—'}</td>
+            <td><span style="color:${color};font-weight:700">${d} ${isAr?'يوم':'days'}</span></td>
+            <td><button class="btn btn-ghost" style="padding:3px 8px;font-size:11px" onclick="togglePaid('${u.id}',true)">🔄 ${isAr?'تجديد':'Renew'}</button></td>
+          </tr>`;
+        }).join('');
+    } else {
+      expiringSection.style.display = 'none';
+    }
+  } catch(e) {}
+}
+
+async function loadAdminData() {
+  await loadSettings();
+  fillSettingsForm();
+  loadOverview();
+}
+
+// ================================================================
+// CHAT
+// ================================================================
+function updateChatBar() {
+  const c = _chunks.length;
+  const infoEl = document.getElementById('chat-info');
+  const chip   = document.getElementById('chat-chip');
+  if (infoEl) infoEl.textContent = c > 0 ? t('chatInfo', {n:c}) : t('chatNoData');
+  if (chip) {
+    chip.textContent = c > 0 ? t('chatConnected') : t('chatDisconnected');
+    chip.style.color = c > 0 ? '#86efac' : '#fca5a5';
+    chip.style.borderColor = c > 0 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
+  }
+}
+
+function searchChunks(q, n=10) {
+  const stops = ['في','على','من','إلى','عن','هل','كيف','ما','ماذا','متى','أين','لو','لماذا','ممكن','عايز','عاوز','اريد','أريد','the','is','how','what','where','when'];
+  const words = q.split(/\s+/).filter(w => w.length > 2 && !stops.includes(w.toLowerCase()));
+  // Arabic root matching: try word + without last 1-2 chars
+  const roots = [...new Set(words.flatMap(w => w.length > 4 ? [w, w.slice(0,-1), w.slice(0,-2)] : [w]))];
+  if (!roots.length || !_chunks.length) return _chunks.slice(-n).map(c => typeof c === 'object' ? c.text : c);
+  return _chunks.map((c, idx) => {
+    const text = typeof c === 'object' ? c.text : c;
+    const score = roots.reduce((sc,w) => sc + (text.includes(w) ? (w.length > 4 ? 3 : 2) : 0), 0);
+    const recencyBoost = idx / _chunks.length;
+    return { text, s: score + (score > 0 ? recencyBoost : 0) };
+  }).sort((a,b) => b.s-a.s).slice(0,n).filter(x=>x.s>0).map(x=>x.text);
+}
+
+function askQ(q) { document.getElementById('user-input').value = q; sendMsg(); }
+
+async function sendMsg() {
+  const input = document.getElementById('user-input');
+  const q = input.value.trim();
+  if (!q || _busy) return;
+  if (!_settings.apiKey) { addBot(t('apiKeyNotSet')); return; }
+
+  // ADMIN CORRECTION: if admin types "تصحيح: ..." save it as high-priority chunk
+  if (window._currentUser?.role === 'admin' && q.startsWith('تصحيح:')) {
+    const correction = q.slice(7).trim();
+    if (correction.length > 10) {
+      input.value = ''; input.style.height = 'auto';
+      addUserMsg(q);
+      const correctionChunk = `[تصحيح رسمي - أولوية قصوى]\n${correction}`;
+      const combined = [..._chunks, correctionChunk];
+      const BATCH = 200; const batches = [];
+      for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
+      await fbSet('system/chunks', { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() });
+      for (let i = 0; i < batches.length; i++) await fbSet(`system/chunks_${i}`, { data: batches[i] });
+      _chunks = combined;
+      addBot('✅ تم حفظ التصحيح — سيُعتمد في الإجابات القادمة');
+      return;
+    }
+  }
+
+  // Daily limit check
+  const uid = window._currentUser?.uid;
+  const limit = _settings.dailyLimit || 30;
+  if (uid && window._currentUser.role !== 'admin') {
+    const today = new Date().toISOString().split('T')[0];
+    const profile = await fbDoc(`users/${uid}`);
+    const lastDate = profile?.lastMsgDate || '';
+    const dayCount = lastDate === today ? (profile?.dayMsgCount || 0) : 0;
+    if (dayCount >= limit) {
+      addBot(_lang === 'ar'
+        ? `⛔ وصلت للحد الأقصى اليومي (${limit} سؤال) — تقدر تسأل تاني بكره`
+        : `⛔ You've reached today's limit (${limit} questions) — come back tomorrow`);
+      return;
+    }
+    // Update count
+    await fbSet(`users/${uid}`, { dayMsgCount: dayCount + 1, lastMsgDate: today });
+  }
+
+  _busy = true;
+  document.getElementById('send-btn').disabled = true;
+  input.value = ''; input.style.height = 'auto';
+  const welcome = document.querySelector('.welcome');
+  if (welcome) welcome.remove();
+
+  // Handle image
+  const imgData = _pendingImage;
+  _pendingImage = null;
+  const preview = document.getElementById('img-preview');
+  if (preview) preview.remove();
+  document.getElementById('img-input').value = '';
+
+  addUserMsg(q, imgData);
+  const typing = addTyping();
+  try {
+    const relChunks = searchChunks(q, 10);
+    // Number chunks so Claude knows recency (higher number = newer)
+    const numberedChunks = relChunks.map((c, i) => `[معلومة ${i+1} من ${relChunks.length} — ${i >= relChunks.length-2 ? '🆕 حديثة' : 'قديمة'}]\n${c}`);
+    const relLocs   = findRelatedLocs(q);
+    const locStr = relLocs.length > 0
+      ? '\n\n📍 Related entities:\n' + relLocs.map(l => `- ${l.name}${l.url?' ← '+l.url:''}${l.address?' | '+l.address:''}${l.notes?' | '+l.notes:''}`).join('\n')
+      : '';
+    const isEn = _lang === 'en';
+    const system = isEn
+      ? `You are a Kuwait government procedures expert named "Al-Murshid". You have years of real field experience.
+
+Rules:
+- Answer confidently like a human expert — never say "I don't have this in my database"
+- Use the knowledge base below as your PRIMARY source
+- If knowledge base has relevant info → use it precisely
+- If knowledge base is partial → complete with your general Kuwait government knowledge
+- If two pieces conflict → use the newer one (marked 🆕) and mention the update
+- Never say "in the group" or "it was mentioned" or "according to my knowledge base"
+- Number steps (1, 2, 3...). Include official website links
+- Short question = short answer. Complex question = full detail
+- If question is vague, ask ONE clarifying question
+
+Image handling:
+- Government form → analyze and explain how to fill it step by step
+
+Knowledge base (your field experience):
+${numberedChunks.length > 0 ? numberedChunks.join('\n\n---\n\n') : '(no specific records for this topic — use your general Kuwait expertise)'}${locStr}`
+      : `أنت "المرشد للمعاملات الحكومية" — خبير متخصص في الإجراءات الحكومية واللوجستية داخل دولة الكويت فقط.
+
+الهوية والنطاق:
+- متخصص في الكويت فقط — لا تقدم معلومات عن دول أخرى إلا لو طلب المستخدم صراحةً للمقارنة
+- مرجعيتك: PACI، وزارة الداخلية، هيئة القوى العاملة، وزارة الصحة (الضمان الصحي)، تطبيق هويتي
+
+قواعد فهم المصطلحات:
+- "مدنية" أو "بطاقة" = البطاقة المدنية الكويتية دائماً — اسأل: "تجديد، أول مرة، أم استلام من الماكينة؟"
+- "إقامة" = مصطلح مظلي — اسأل: "تجديد الإقامة في الهجرة (مادة 18 أو 22)؟ أم من البداية (ضمان صحي + إذن عمل)؟"
+- "تجديد" بدون تحديد — اسأل: "شنو تبي تجدد؟ (مدنية - إقامة - رخصة قيادة - دفتر سيارة)"
+- "مرور" = إجراءات مرور الكويت فقط (دفتر سيارة، رخصة قيادة، مخالفات)
+- كلمات مثل (هويتي، الضمان، البصمة البيومترية، منصة متى، إذن العمل) = سياق كويتي 100%
+
+أسلوب التفكير:
+- لو الطلب يحتمل أكثر من مسار → اسأل سؤال استيضاحي واحد أولاً
+- نبّه دائماً للروابط بين المعاملات (مثلاً: لا تجديد إقامة بدون ضمان صحي، لا بطاقة مدنية بدون تحديث الإقامة)
+- لو وجدت معلومتين عن نفس الموضوع → اعتمد الأحدث (المميزة بـ 🆕) واذكر التحديث
+- لا تذكر "جروب" أو "محادثات" أو "قاعدة بيانات" أو "مصدر"
+
+النبرة:
+- مهنية وعملية وتستخدم مفردات السوق الكويتي: "تجهيز المعاملة"، "حجز موعد منصة متى"
+- سؤال بسيط = إجابة قصيرة، سؤال معقد = تفصيل كامل بالخطوات المرقّمة مع المواقع الرسمية
+
+قاعدة المعرفة (خبرتك الميدانية):
+${numberedChunks.length > 0 ? numberedChunks.join('\n\n---\n\n') : '(لا توجد سجلات محددة — استخدم خبرتك العامة بالإجراءات الكويتية)'}${locStr}`;
+
+    _chatHistory.push({ role:'user', content:q });
+    if (_chatHistory.length > 12) _chatHistory = _chatHistory.slice(-10);
+
+    // Build user content — add image if present
+    let userContent = q;
+    if (imgData) {
+      userContent = [
+        { type:'image', source:{ type:'base64', media_type: imgData.type, data: imgData.base64 } },
+        { type:'text', text: q || (_lang==='ar'?'ما هذا؟':'What is this?') }
+      ];
+    }
+
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'x-api-key':_settings.apiKey,
+        'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, system, messages:_chatHistory })
+    });
+    const data = await r.json();
+    typing.remove();
+    if (data.error) { addBot('❌ '+data.error.message); _chatHistory.pop(); }
+    else {
+      const ans = data.content[0].text;
+      _chatHistory.push({ role:'assistant', content:ans });
+      const msgId = Date.now().toString();
+      addBot(ans, relChunks.length, relLocs, msgId);
+      checkTemplatesForQuestion(q);
+      // Save to Firebase chat history
+      if (uid) {
+        try {
+          await fbAdd(`chats/${uid}/messages`, { q, ans, ts: new Date().toISOString() });
+        } catch(e) {}
+      }
+      // Auto-learn: save Q&A as chunk so future answers improve
+      try {
+        const learnChunk = `[سؤال شائع]\nسؤال: ${q}\nإجابة: ${ans.slice(0, 300)}`;
+        const combined = [..._chunks, learnChunk];
+        const BATCH = 200; const batches = [];
+        for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
+        await fbSet('system/chunks', { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() });
+        for (let i = 0; i < batches.length; i++) await fbSet(`system/chunks_${i}`, { data: batches[i] });
+        _chunks = combined;
+      } catch(e) {}
+      try {
+        await fbSet('system/settings', { totalMsgs: (_settings.totalMsgs||0)+1 });
+        _settings.totalMsgs = (_settings.totalMsgs||0)+1;
+      } catch(e){}
+    }
+  } catch(e) { typing.remove(); addBot('❌ '+e.message); }
+  _busy = false;
+  document.getElementById('send-btn').disabled = false;
+  input.focus();
+}
+
+function addUserMsg(text, imgData=null) {
+  const a = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = 'msg user';
+  const imgHtml = imgData ? `<img src="data:${imgData.type};base64,${imgData.base64}" class="img-preview" style="max-width:160px;margin-bottom:6px" />` : '';
+  d.innerHTML = `<div class="av">👤</div><div><div class="bubble">${imgHtml}${esc(text)}</div></div>`;
+  a.appendChild(d); a.scrollTop = a.scrollHeight;
+  // Remove preview from input area
+  const prev = document.getElementById('img-preview');
+  if (prev) prev.remove();
+}
+
+function addBot(text, srcCount=0, locs=[], msgId='') {
+  const a = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = 'msg bot';
+  const locHtml = locs.map(l => `<div class="loc-card"><h4>📍 ${l.name}</h4>${l.address?`<p>📌 ${l.address}</p>`:''}${l.url?`<p>🔗 <a href="${l.url}" target="_blank">${l.url}</a></p>`:''}${l.notes?`<p>ℹ️ ${l.notes}</p>`:''}</div>`).join('');
+  const srcHtml = srcCount > 0 ? `<div class="src-tag">📚 ${srcCount} chunks</div>` : '';
+  const actHtml = msgId ? `
+    <div class="msg-actions" id="act-${msgId}">
+      <button class="act-btn" onclick="rateMsg('${msgId}','up',this)" title="${_lang==='ar'?'مفيد':'Helpful'}">👍</button>
+      <button class="act-btn" onclick="rateMsg('${msgId}','down',this)" title="${_lang==='ar'?'مش مفيد':'Not helpful'}">👎</button>
+      <button class="act-btn" onclick="copyMsg('${msgId}')" title="${_lang==='ar'?'نسخ':'Copy'}">📋</button>
+      <button class="act-btn" onclick="shareWa('${msgId}')" title="${_lang==='ar'?'شارك على واتساب':'Share on WhatsApp'}">💬</button>
+      <button class="act-btn" onclick="saveFavorite('${msgId}',this)" title="${_lang==='ar'?'أضف للمفضلة':'Save to favorites'}">⭐</button>
+    </div>` : '';
+  d.innerHTML = `<div class="av">🤖</div><div><div class="bubble" id="bbl-${msgId}">${fmt(text)}${locHtml}</div>${srcHtml}${actHtml}</div>`;
+  a.appendChild(d); a.scrollTop = a.scrollHeight;
+}
+
+function rateMsg(msgId, rating, btn) {
+  // Visual feedback
+  const container = document.getElementById('act-' + msgId);
+  if (!container) return;
+  const btns = container.querySelectorAll('.act-btn');
+  btns[0].style.opacity = rating === 'up' ? '1' : '0.3';
+  btns[1].style.opacity = rating === 'down' ? '1' : '0.3';
+  btns[0].style.transform = rating === 'up' ? 'scale(1.3)' : '';
+  btns[1].style.transform = rating === 'down' ? 'scale(1.3)' : '';
+  // Save to Firebase
+  const uid = window._currentUser?.uid;
+  if (uid) {
+    fbAdd(`ratings`, { uid, msgId, rating, ts: new Date().toISOString() }).catch(()=>{});
+  }
+  toast(rating === 'up'
+    ? (_lang==='ar' ? '✅ شكراً على تقييمك!' : '✅ Thanks for the feedback!')
+    : (_lang==='ar' ? '📝 سنحسّن الإجابات قريباً' : '📝 We\'ll improve soon'), 'ok');
+}
+
+function copyMsg(msgId) {
+  const bbl = document.getElementById('bbl-' + msgId);
+  if (!bbl) return;
+  navigator.clipboard.writeText(bbl.innerText).then(() => {
+    toast(_lang==='ar' ? '📋 تم النسخ!' : '📋 Copied!', 'ok');
+  }).catch(() => {
+    toast(_lang==='ar' ? '❌ فشل النسخ' : '❌ Copy failed', 'err');
+  });
+}
+
+function shareWa(msgId) {
+  const bbl = document.getElementById('bbl-' + msgId);
+  if (!bbl) return;
+  const text = bbl.innerText.slice(0, 500);
+  const platform = _settings.name || 'المرشد للمعاملات الحكومية';
+  const msg = `*${platform}*\n\n${text}\n\n_${window.location.href.split('?')[0]}_`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// ── FAVORITES ──
+let _favorites = JSON.parse(localStorage.getItem('_favs') || '[]');
+
+function saveFavorite(msgId, btn) {
+  const bbl = document.getElementById('bbl-' + msgId);
+  if (!bbl) return;
+  const text = bbl.innerText;
+  const already = _favorites.find(f => f.id === msgId);
+  if (already) {
+    _favorites = _favorites.filter(f => f.id !== msgId);
+    btn.style.opacity = '0.5';
+    toast(_lang === 'ar' ? '⭐ تم الحذف من المفضلة' : '⭐ Removed from favorites', 'ok');
+  } else {
+    _favorites.unshift({ id: msgId, text, ts: new Date().toISOString() });
+    btn.style.opacity = '1';
+    btn.style.transform = 'scale(1.4)';
+    setTimeout(() => btn.style.transform = '', 300);
+    toast(_lang === 'ar' ? '⭐ تم الحفظ في المفضلة' : '⭐ Saved to favorites', 'ok');
+  }
+  localStorage.setItem('_favs', JSON.stringify(_favorites.slice(0, 100)));
+}
+
+function loadFavorites() {
+  _favorites = JSON.parse(localStorage.getItem('_favs') || '[]');
+  const el = document.getElementById('fav-list');
+  if (!_favorites.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray);font-family:'Almarai',sans-serif">لا توجد إجابات محفوظة بعد<br><small style="opacity:.5">اضغط ⭐ على أي إجابة لحفظها</small></div>`;
+    return;
+  }
+  el.innerHTML = _favorites.map((f, i) => `
+    <div class="fav-item">
+      <div class="fav-text">${fmt(f.text)}</div>
+      <div class="fav-actions">
+        <button class="act-btn" onclick="copyFav(${i})" title="نسخ">📋</button>
+        <button class="act-btn" onclick="shareWaText('${encodeURIComponent(f.text)}')" title="شارك واتساب">💬</button>
+        <button class="act-btn" onclick="deleteFav(${i})" title="حذف" style="color:#f87171">🗑️</button>
+      </div>
+      <div class="hist-date">${new Date(f.ts).toLocaleString('ar-KW')}</div>
+    </div>`).join('');
+}
+
+function copyFav(i) {
+  navigator.clipboard.writeText(_favorites[i].text).then(() => toast(_lang==='ar'?'📋 تم النسخ!':'📋 Copied!','ok'));
+}
+function shareWaText(encoded) {
+  const text = decodeURIComponent(encoded).slice(0, 500);
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+}
+function deleteFav(i) {
+  _favorites.splice(i, 1);
+  localStorage.setItem('_favs', JSON.stringify(_favorites));
+  loadFavorites();
+}
+
+// ── HISTORY ──
+let _allHistory = [];
+
+async function loadHistory() {
+  const el = document.getElementById('hist-list');
+  el.innerHTML = `<div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px;padding:12px">جاري التحميل...</div>`;
+  const uid = window._currentUser?.uid;
+  if (!uid) return;
+  try {
+    _allHistory = await fbCollection(`chats/${uid}/messages`);
+    _allHistory.sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    renderHistory(_allHistory);
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px">لا توجد محادثات</div>`;
+  }
+}
+
+function renderHistory(items) {
+  const el = document.getElementById('hist-list');
+  if (!items.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray);font-family:'Almarai',sans-serif">لا توجد محادثات سابقة</div>`;
+    return;
+  }
+  el.innerHTML = items.map(m => `
+    <div class="hist-item" onclick="openHistItem(this)" data-ans="${encodeURIComponent(m.ans||'')}">
+      <div class="hist-q">❓ ${m.q || ''}</div>
+      <div class="hist-a">${(m.ans||'').slice(0, 120)}...</div>
+      <div class="hist-date">${new Date(m.ts).toLocaleString('ar-KW')}</div>
+    </div>`).join('');
+}
+
+function filterHistory(q) {
+  if (!q) { renderHistory(_allHistory); return; }
+  const f = _allHistory.filter(m => (m.q+m.ans).toLowerCase().includes(q.toLowerCase()));
+  renderHistory(f);
+}
+
+function openHistItem(el) {
+  const ans = decodeURIComponent(el.dataset.ans);
+  switchPanel('chat');
+  addBot(ans, 0, [], '');
+}
+
+// ── RESTORE LAST CHAT ON LOGIN ──
+async function restoreLastChat() {
+  const uid = window._currentUser?.uid;
+  if (!uid) return;
+  try {
+    const msgs = await fbCollection(`chats/${uid}/messages`);
+    if (!msgs.length) return;
+    msgs.sort((a,b) => new Date(a.ts)-new Date(b.ts));
+    const last10 = msgs.slice(-10);
+    const msgsEl = document.getElementById('msgs');
+    if (last10.length) {
+      msgsEl.querySelector('.welcome') && (msgsEl.querySelector('.welcome').style.display = 'none');
+    }
+    last10.forEach(m => {
+      // user bubble
+      const u = document.createElement('div');
+      u.className = 'msg user';
+      u.innerHTML = `<div class="bubble">${m.q}</div>`;
+      msgsEl.appendChild(u);
+      // bot bubble
+      addBot(m.ans || '', 0, [], '');
+    });
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  } catch(e) {}
+}
+
+// ── IMAGE UPLOAD ──
+let _pendingImage = null;
+
+function handleImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _pendingImage = { base64: e.target.result.split(',')[1], type: file.type };
+    const preview = document.getElementById('img-preview');
+    if (preview) preview.remove();
+    const prev = document.createElement('img');
+    prev.id = 'img-preview';
+    prev.className = 'img-preview';
+    prev.src = e.target.result;
+    prev.onclick = () => { prev.remove(); _pendingImage = null; input.value = ''; };
+    document.querySelector('.input-area').insertBefore(prev, document.querySelector('.input-area').firstChild);
+    toast(_lang==='ar'?'📎 الصورة جاهزة — اكتب سؤالك واضغط إرسال':'📎 Image ready — type your question', 'ok');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── ADMIN: USER QUESTIONS ──
+let _adminQs = [];
+async function loadAdminQuestions() {
+  const el = document.getElementById('admin-questions-list');
+  el.innerHTML = `<div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px">جاري التحميل...</div>`;
+  try {
+    const users = await fbCollection('users');
+    const sel = document.getElementById('q-filter-user');
+    sel.innerHTML = `<option value="">كل المستخدمين</option>` +
+      users.map(u => `<option value="${u.id}">${u.name||u.email}</option>`).join('');
+
+    // gather all chats
+    _adminQs = [];
+    await Promise.all(users.map(async u => {
+      try {
+        const msgs = await fbCollection(`chats/${u.id}/messages`);
+        msgs.forEach(m => _adminQs.push({ ...m, userName: u.name||u.email, userId: u.id }));
+      } catch(e) {}
+    }));
+    _adminQs.sort((a,b) => new Date(b.ts)-new Date(a.ts));
+    renderAdminQuestions(_adminQs);
+  } catch(e) {
+    el.innerHTML = `<div style="color:var(--gray)">خطأ في التحميل</div>`;
+  }
+}
+
+function renderAdminQuestions(items) {
+  const el = document.getElementById('admin-questions-list');
+  if (!items.length) { el.innerHTML = `<div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px;padding:12px">لا توجد أسئلة</div>`; return; }
+  el.innerHTML = items.slice(0, 100).map(m => `
+    <div class="card" style="margin-bottom:10px;padding:13px 15px">
+      <div style="font-size:11px;color:var(--gold2);margin-bottom:5px;font-family:'Almarai',sans-serif">👤 ${m.userName} · ${new Date(m.ts).toLocaleString('ar-KW')}</div>
+      <div style="font-size:13px;font-weight:600;color:#e8edf5;margin-bottom:5px">❓ ${m.q||''}</div>
+      <div style="font-size:12px;color:var(--gray);font-family:'Almarai',sans-serif;line-height:1.6">${(m.ans||'').slice(0,200)}${m.ans?.length>200?'...':''}</div>
+    </div>`).join('');
+}
+
+async function exportQuestionsAsTxt() {
+  showOv('جاري تجميع الأسئلة...');
+  try {
+    const db = window._db;
+    const { collection, getDocs } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+    const usersSnap = await getDocs(collection(db, 'users'));
+    let lines = [`# أسئلة المستخدمين — تصدير ${new Date().toLocaleDateString('ar-KW')}\n`];
+    let total = 0;
+    for (const userDoc of usersSnap.docs) {
+      try {
+        const msgsSnap = await getDocs(collection(db, `chats/${userDoc.id}/messages`));
+        msgsSnap.docs.forEach(d => {
+          const m = d.data();
+          if (m.q && m.ans) {
+            lines.push(`سؤال: ${m.q}`);
+            lines.push(`إجابة: ${m.ans.slice(0,400)}`);
+            lines.push('---');
+            total++;
+          }
+        });
+      } catch(e) {}
+    }
+    hideOv();
+    if (total === 0) { toast('مفيش أسئلة للتصدير', 'err'); return; }
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `questions_export_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    toast(`✅ تم تصدير ${total} سؤال`, 'ok');
+  } catch(e) { hideOv(); toast('❌ ' + e.message, 'err'); }
+}
+
+function filterAdminQuestions(q) {
+  const uid = document.getElementById('q-filter-user').value;
+  let filtered = _adminQs;
+  if (uid) filtered = filtered.filter(m => m.userId === uid);
+  if (q)  filtered = filtered.filter(m => (m.q+m.ans).toLowerCase().includes(q.toLowerCase()));
+  renderAdminQuestions(filtered);
+}
+
+function addTyping() {
+  const a = document.getElementById('msgs');
+  const d = document.createElement('div');
+  d.className = 'msg bot';
+  d.innerHTML = `<div class="av">🤖</div><div class="bubble"><div class="dots"><span></span><span></span><span></span></div></div>`;
+  a.appendChild(d); a.scrollTop = a.scrollHeight;
+  return d;
+}
+
+// ================================================================
+// API TEST
+// ================================================================
+async function testApi() {
+  const key = document.getElementById('s-api-key').value.trim();
+  if (!key) { toast(t('errNoApiKey'), 'err'); return; }
+  showOv(t('testing'));
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:10,messages:[{role:'user',content:'hi'}]})
+    });
+    const d = await r.json();
+    hideOv();
+    if (d.error) toast('❌ '+d.error.message, 'err');
+    else toast(t('toastApiOk'), 'ok');
+  } catch(e) { hideOv(); toast(t('toastApiFail'), 'err'); }
+}
+
+// ================================================================
+// LANDING PAGE
+// ================================================================
+function applyLandingLang() {
+  // Safe setter — skips missing elements silently
+  const s = (id, val, html=false) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (html) el.innerHTML = val; else el.textContent = val;
+  };
+  const isAr = _lang === 'ar';
+  const days = _settings.trialDays || 10;
+  const price = _settings.price || '5';
+  const name  = _settings.name || (isAr ? 'المرشد للمعاملات الحكومية' : 'Kuwait Mandoob');
+
+  const btn = document.getElementById('land-lang-btn');
+  if (btn) btn.textContent = isAr ? 'EN' : 'ع';
+
+  if (isAr) {
+    s('ln-brand',    name);
+    s('ln-signin',   'دخول');
+    s('ln-try',      'جرّب مجاناً');
+    s('ln-badge',    '🇰🇼 النظام الأول من نوعه في الكويت');
+    s('ln-h1-line1', 'كل إجراء حكومي');
+    s('ln-h1-line2', 'في ثانية واحدة');
+    s('ln-sub',      'النظام الذكي المبني على خبرة آلاف الالمرشد للمعاملات الحكوميةيين — اسأل عن أي وزارة واحصل على إجابة فورية ودقيقة');
+    s('ln-cta',      'ابدأ التجربة المجانية');
+    s('ln-login2',   'تسجيل الدخول');
+    s('ln-notrial',  `بدون بطاقة بنكية · ${days} أيام مجاناً`);
+    s('ls1',  '120K+'); s('ls1l', 'خبرة ومعلومة حقيقية');
+    s('ls2',  '35+');   s('ls2l', 'جهة ووزارة حكومية');
+    s('ls3',  'فوري'); s('ls3l', 'رد في ثوانٍ');
+    s('ln-feat-label', 'المميزات');
+    s('ln-feat-title', 'ليش المرشد للمعاملات الحكومية؟');
+    s('ln-feat-sub',   'كل حاجة تحتاجها في مكان واحد');
+    s('lf1t', 'ذكاء اصطناعي حقيقي');      s('lf1d', 'مش ردود جاهزة — بيفهم سؤالك ويجاوبك بناءً على خبرة المناديب الفعلية');
+    s('lf2t', 'خطوات مرقّمة وواضحة');      s('lf2d', 'مش كلام نظري — خطوات عملية بالترتيب مع روابط المواقع الرسمية');
+    s('lf3t', 'إشعارات القرارات الجديدة'); s('lf3d', 'لما تنزل قرارات أو تعليمات جديدة تصلك فوراً داخل النظام');
+    s('lf4t', 'تقويم المهام');              s('lf4d', 'نظّم مهامك اليومية والأسبوعية وتلقّى تذكيرات على واتساب');
+    s('lf5t', 'مخصص للكويت 100%');         s('lf5d', 'محتوى مبني على واقع الإجراءات الكويتية وليس معلومات عامة');
+    s('lf6t', 'شارك الإجابات');            s('lf6d', 'ابعت أي إجابة لزميلك على واتساب بضغطة واحدة');
+    s('ln-how-label', 'كيف يشتغل');
+    s('ln-how',       'ثلاث خطوات بس');
+    s('lh1', 'سجّل وابدأ التجربة المجانية في 30 ثانية');
+    s('lh2', 'اسأل أي سؤال عن إجراء حكومي بالعربي');
+    s('lh3', 'احصل على خطوات دقيقة فوراً');
+    s('ln-price-label', 'الأسعار');
+    s('ln-price-title', 'سعر بسيط وواضح');
+    s('ln-price-sub',   'بدون عقود أو رسوم خفية');
+    s('ln-free-tag',    `🎁 ${days} أيام مجاناً`);
+
+    s('lp1', 'وصول كامل للنظام');
+    s('lp2', 'إشعارات القرارات الجديدة');
+    s('lp3', 'تقويم المهام + تذكيرات واتساب');
+    s('lp4', 'تحديثات مستمرة');
+    s('ln-sub-btn', 'ابدأ مجاناً الآن');
+    s('ln-footer',  `© 2025 ${name} — جميع الحقوق محفوظة`);
+  } else {
+    s('ln-brand',    name);
+    s('ln-signin',   'Sign In');
+    s('ln-try',      'Try Free');
+    s('ln-badge',    '🇰🇼 Kuwait\'s First of Its Kind');
+    s('ln-h1-line1', 'Every Government');
+    s('ln-h1-line2', 'Procedure Instantly');
+    s('ln-sub',      'AI-powered system built on thousands of expert Kuwaiti agents\' real experience — ask anything about ministries and get accurate answers instantly');
+    s('ln-cta',      'Start Free Trial');
+    s('ln-login2',   'Sign In');
+    s('ln-notrial',  `No credit card · ${days} days free`);
+    s('ls1',  '120K+'); s('ls1l', 'Real expertise messages');
+    s('ls2',  '35+');   s('ls2l', 'Government entities');
+    s('ls3',  'Fast'); s('ls3l', 'Response in seconds');
+    s('ln-feat-label', 'FEATURES');
+    s('ln-feat-title', 'Why Kuwait Mandoob?');
+    s('ln-feat-sub',   'Everything you need in one place');
+    s('lf1t', 'Real AI Intelligence');    s('lf1d', 'Not scripted — understands your question based on real agent expertise');
+    s('lf2t', 'Clear Numbered Steps');   s('lf2d', 'Not theory — practical steps in order with official website links');
+    s('lf3t', 'New Decision Alerts');    s('lf3d', 'When new decisions or instructions drop, you\'re notified instantly');
+    s('lf4t', 'Task Calendar');          s('lf4d', 'Organize daily and weekly tasks and receive WhatsApp reminders');
+    s('lf5t', '100% Kuwait-Specific');   s('lf5d', 'Content built on real Kuwaiti procedures, not generic information');
+    s('lf6t', 'Share Answers');          s('lf6d', 'Send any answer to a colleague on WhatsApp in one tap');
+    s('ln-how-label', 'HOW IT WORKS');
+    s('ln-how',       'Just Three Steps');
+    s('lh1', 'Register and start your free trial in 30 seconds');
+    s('lh2', 'Ask any question about a government procedure');
+    s('lh3', 'Get accurate steps instantly');
+    s('ln-price-label', 'PRICING');
+    s('ln-price-title', 'Simple, clear pricing');
+    s('ln-price-sub',   'No contracts or hidden fees');
+    s('ln-free-tag',    `🎁 ${days} days free`);
+
+    s('lp1', 'Full system access');
+    s('lp2', 'New decision notifications');
+    s('lp3', 'Task calendar + WhatsApp reminders');
+    s('lp4', 'Continuous updates');
+    s('ln-sub-btn', 'Start Free Now');
+    s('ln-footer',  `© 2025 ${name} — All Rights Reserved`);
+  }
+}
+
+// ================================================================
+// ANNOUNCEMENTS
+// ================================================================
+let _announcements = [];
+let _readAnns = JSON.parse(localStorage.getItem('_readAnns') || '[]');
+
+async function loadAnnouncements() {
+  try {
+    _announcements = await fbCollection('announcements');
+    _announcements.sort((a,b) => new Date(b.ts) - new Date(a.ts));
+    renderAnnouncements();
+    updateBellBadge();
+  } catch(e) {}
+}
+
+function renderAnnouncements() {
+  const el = document.getElementById('ann-list');
+  if (!el) return;
+  if (!_announcements.length) {
+    el.innerHTML = `<div style="text-align:center;padding:40px;color:var(--gray);font-family:'Almarai',sans-serif">${_lang==='ar'?'لا توجد إعلانات حالياً':'No announcements yet'}</div>`;
+    return;
+  }
+  el.innerHTML = _announcements.map(a => {
+    const isUnread = !_readAnns.includes(a.id);
+    const tagClass = a.type === 'urgent' ? 'ann-urgent' : a.type === 'info' ? 'ann-info' : 'ann-news';
+    const tagLabel = a.type === 'urgent' ? (_lang==='ar'?'🔴 عاجل':'🔴 Urgent') : a.type === 'info' ? (_lang==='ar'?'ℹ️ معلومة':'ℹ️ Info') : (_lang==='ar'?'📰 خبر':'📰 News');
+    const dateStr = new Date(a.ts).toLocaleDateString(_lang==='ar'?'ar-KW':'en-KW', {year:'numeric',month:'short',day:'numeric'});
+    return `<div class="ann-item ${isUnread?'unread':''}" onclick="readAnn('${a.id}',this)">
+      <span class="ann-tag ${tagClass}">${tagLabel}</span>
+      ${isUnread?'<span style="float:left;background:var(--gold2);width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;margin-top:4px"></span>':''}
+      <div style="font-size:14px;font-weight:700;color:#e8edf5;margin-bottom:6px">${a.title}</div>
+      <div style="font-size:13px;font-family:'Almarai',sans-serif;color:#c5cdd8;line-height:1.75;white-space:pre-wrap">${a.body}</div>
+      ${a.imgUrl?`<img class="ann-img" src="${a.imgUrl}" alt="" onerror="this.style.display='none'" onclick="window.open('${a.imgUrl}','_blank')" />`:''}
+      <div style="font-size:11px;color:var(--gray);font-family:'Almarai',sans-serif;margin-top:10px">📅 ${dateStr}</div>
+    </div>`;
+  }).join('');
+}
+
+function readAnn(id, el) {
+  if (!_readAnns.includes(id)) {
+    _readAnns.push(id);
+    localStorage.setItem('_readAnns', JSON.stringify(_readAnns));
+    el.classList.remove('unread');
+    updateBellBadge();
+  }
+}
+
+function markAllRead() {
+  _announcements.forEach(a => { if (!_readAnns.includes(a.id)) _readAnns.push(a.id); });
+  localStorage.setItem('_readAnns', JSON.stringify(_readAnns));
+  renderAnnouncements();
+  updateBellBadge();
+}
+
+function updateBellBadge() {
+  const unread = _announcements.filter(a => !_readAnns.includes(a.id)).length;
+  const badge  = document.getElementById('bell-badge');
+  const bell   = document.getElementById('bell-btn');
+  if (!badge || !bell) return;
+  bell.style.display = 'flex';
+  if (unread > 0) {
+    badge.style.display = 'flex';
+    badge.textContent = unread;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function publishAnnouncement() {
+  const title = document.getElementById('ann-inp-title').value.trim();
+  const body  = document.getElementById('ann-inp-body').value.trim();
+  const type  = document.getElementById('ann-inp-type').value;
+  const imgUrl= document.getElementById('ann-inp-img').value.trim();
+  if (!title || !body) { toast(_lang==='ar'?'اكتب العنوان والتفاصيل':'Fill title and body', 'err'); return; }
+  showOv('...');
+  try {
+    await fbAdd('announcements', { title, body, type, imgUrl, ts: new Date().toISOString() });
+    hideOv();
+    toast(_lang==='ar'?'📢 تم النشر للكل!':'📢 Published!', 'ok');
+    document.getElementById('ann-inp-title').value = '';
+    document.getElementById('ann-inp-body').value = '';
+    document.getElementById('ann-inp-img').value = '';
+    loadAdminAnnouncements();
+  } catch(e) { hideOv(); toast('❌ '+e.message, 'err'); }
+}
+
+async function loadAdminAnnouncements() {
+  try {
+    const anns = await fbCollection('announcements');
+    anns.sort((a,b) => new Date(b.ts) - new Date(a.ts));
+    const el = document.getElementById('ann-admin-list');
+    if (!el) return;
+    el.innerHTML = anns.map(a => `
+      <div class="card" style="padding:13px 15px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:var(--gold2);margin-bottom:3px">${a.title}</div>
+          <div style="font-size:12px;color:var(--gray);font-family:'Almarai',sans-serif">${new Date(a.ts).toLocaleDateString('ar-KW')}</div>
+        </div>
+        <button class="btn btn-red" style="padding:3px 9px;font-size:11px;flex-shrink:0" onclick="deleteAnn('${a.id}')">حذف</button>
+      </div>`).join('') || `<p style="color:var(--gray);font-family:Almarai,sans-serif;font-size:13px">لا توجد إعلانات</p>`;
+  } catch(e) {}
+}
+
+async function deleteAnn(id) {
+  showOv('...');
+  try { await fbDelete('announcements', id); hideOv(); toast('🗑️','ok'); loadAdminAnnouncements(); }
+  catch(e) { hideOv(); toast('❌ '+e.message,'err'); }
+}
+
+// ================================================================
+// CALENDAR & TASKS
+// ================================================================
+let _calDate    = new Date();
+let _selDate    = new Date();
+let _tasks      = [];
+let _taskColor  = '#c9a84c';
+
+const CAL_DAYS_AR = ['أح','إث','ثل','أر','خم','جم','سب'];
+const CAL_DAYS_EN = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+const CAL_MONTHS_AR = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const CAL_MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+async function loadTasks() {
+  const uid = window._currentUser?.uid;
+  if (!uid) return;
+  try {
+    _tasks = await fbCollection(`tasks/${uid}/items`);
+  } catch(e) { _tasks = []; }
+  renderCalendar();
+  renderDayTasks();
+}
+
+function renderCalendar() {
+  const isAr   = _lang === 'ar';
+  const y = _calDate.getFullYear(), m = _calDate.getMonth();
+  const monthLbl = document.getElementById('cal-month-lbl');
+  if (monthLbl) monthLbl.textContent = `${isAr?CAL_MONTHS_AR[m]:CAL_MONTHS_EN[m]} ${y}`;
+  const lblEl = document.getElementById('cal-days-labels');
+  if (lblEl) lblEl.innerHTML = (isAr?CAL_DAYS_AR:CAL_DAYS_EN).map(d => `<div class="cal-day-lbl">${d}</div>`).join('');
+  const grid = document.getElementById('cal-grid');
+  if (!grid) return;
+  const first   = new Date(y, m, 1).getDay();
+  const daysIn  = new Date(y, m+1, 0).getDate();
+  const prevDays = new Date(y, m, 0).getDate();
+  const today   = new Date(); today.setHours(0,0,0,0);
+  let html = '';
+  // Prev month
+  for (let i = first-1; i >= 0; i--) html += `<div class="cal-day other-month">${prevDays-i}</div>`;
+  // This month
+  for (let d = 1; d <= daysIn; d++) {
+    const thisDate = new Date(y, m, d);
+    const dateStr  = thisDate.toISOString().split('T')[0];
+    const hasTasks = _tasks.some(t => t.date === dateStr && !t.done);
+    const isToday  = thisDate.getTime() === today.getTime();
+    const isSel    = thisDate.toDateString() === _selDate.toDateString();
+    html += `<div class="cal-day ${isToday?'today':''} ${isSel?'selected':''} ${hasTasks?'has-task':''}" onclick="selectDay(${y},${m},${d})">${d}</div>`;
+  }
+  grid.innerHTML = html;
+  // Update day title
+  const dtEl = document.getElementById('cal-day-title');
+  if (dtEl) dtEl.textContent = isAr
+    ? `مهام ${_selDate.getDate()} ${CAL_MONTHS_AR[_selDate.getMonth()]}`
+    : `Tasks for ${CAL_MONTHS_EN[_selDate.getMonth()]} ${_selDate.getDate()}`;
+}
+
+function selectDay(y, m, d) {
+  _selDate = new Date(y, m, d);
+  renderCalendar();
+  renderDayTasks();
+}
+
+function calNav(dir) {
+  _calDate = new Date(_calDate.getFullYear(), _calDate.getMonth() + dir, 1);
+  renderCalendar();
+}
+
+function renderDayTasks() {
+  const el = document.getElementById('cal-tasks-list');
+  if (!el) return;
+  const dateStr = _selDate.toISOString().split('T')[0];
+  const dayTasks = _tasks.filter(t => t.date === dateStr);
+  const isAr = _lang === 'ar';
+  if (!dayTasks.length) {
+    el.innerHTML = `<div style="color:var(--gray);font-size:13px;font-family:'Almarai',sans-serif;padding:8px 0">${isAr?'لا توجد مهام لهذا اليوم':'No tasks for this day'}</div>`;
+    return;
+  }
+  el.innerHTML = dayTasks.map(task => `
+    <div class="task-item ${task.done?'task-done':''}">
+      <div class="task-dot" style="background:${task.color||'#c9a84c'}"></div>
+      <div style="flex:1">
+        <div class="task-text" style="font-size:13px;color:#e8edf5;font-weight:600">${task.title}</div>
+        ${task.note?`<div style="font-size:11px;color:var(--gray);font-family:'Almarai',sans-serif;margin-top:2px">${task.note}</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost" style="padding:3px 8px;font-size:12px" onclick="toggleTaskDone('${task.id}',${!task.done})">${task.done?(isAr?'↩':'↩'):'✓'}</button>
+        <button class="btn btn-red" style="padding:3px 7px;font-size:11px" onclick="deleteTask('${task.id}')">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function openAddTaskModal() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('task-date-inp').value = _selDate.toISOString().split('T')[0] || today;
+  document.getElementById('task-title-inp').value = '';
+  document.getElementById('task-note-inp').value = '';
+  _taskColor = '#c9a84c';
+  document.querySelectorAll('.color-pick').forEach(el => el.style.border = el.dataset.color === _taskColor ? '2px solid white' : '2px solid transparent');
+  document.getElementById('task-modal').style.display = 'flex';
+}
+
+function closeTaskModal() { document.getElementById('task-modal').style.display = 'none'; }
+
+function pickColor(el) {
+  _taskColor = el.dataset.color;
+  document.querySelectorAll('.color-pick').forEach(e => e.style.border = e.dataset.color === _taskColor ? '2px solid white' : '2px solid transparent');
+}
+
+async function saveTask() {
+  const title = document.getElementById('task-title-inp').value.trim();
+  const date  = document.getElementById('task-date-inp').value;
+  const note  = document.getElementById('task-note-inp').value.trim();
+  if (!title || !date) { toast(_lang==='ar'?'اكتب العنوان والتاريخ':'Fill title and date','err'); return; }
+  const uid = window._currentUser?.uid;
+  if (!uid) return;
+  showOv('...');
+  try {
+    const id = await fbAdd(`tasks/${uid}/items`, { title, date, note, color: _taskColor, done: false, createdAt: new Date().toISOString() });
+    _tasks.push({ id, title, date, note, color: _taskColor, done: false });
+    hideOv(); closeTaskModal();
+    toast(_lang==='ar'?'✅ تمت الإضافة':'✅ Added','ok');
+    renderCalendar(); renderDayTasks();
+  } catch(e) { hideOv(); toast('❌ '+e.message,'err'); }
+}
+
+async function toggleTaskDone(id, done) {
+  const uid = window._currentUser?.uid;
+  if (!uid) return;
+  try {
+    await fbSet(`tasks/${uid}/items/${id}`, { done });
+    const task = _tasks.find(t => t.id === id);
+    if (task) task.done = done;
+    renderDayTasks();
+  } catch(e) {}
+}
+
+async function deleteTask(id) {
+  const uid = window._currentUser?.uid;
+  if (!uid) return;
+  showOv('...');
+  try {
+    await fbDelete(`tasks/${uid}/items`, id);
+    _tasks = _tasks.filter(t => t.id !== id);
+    hideOv(); toast('🗑️','ok');
+    renderCalendar(); renderDayTasks();
+  } catch(e) { hideOv(); toast('❌ '+e.message,'err'); }
+}
+
+function sendTasksWa() {
+  const today = new Date().toISOString().split('T')[0];
+  const todayTasks = _tasks.filter(t => t.date === today && !t.done);
+  const isAr = _lang === 'ar';
+  if (!todayTasks.length) { toast(isAr?'مفيش مهام النهارده':'No tasks today','err'); return; }
+  const list = todayTasks.map((t,i) => `${i+1}. ${t.title}${t.note?' — '+t.note:''}`).join('\n');
+  const msg  = isAr
+    ? `*مهام اليوم 📅*\n\n${list}\n\n_${_settings.name||'المرشد للمعاملات الحكومية'}_`
+    : `*Today's Tasks 📅*\n\n${list}\n\n_${_settings.name||'Kuwait Mandoob'}_`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// Admin: send tasks reminder to all via WhatsApp (opens with pre-filled message)
+async function sendAllTasksReminder() {
+  const users = await fbCollection('users').catch(()=>[]);
+  const phones = users.filter(u=>u.phone && u.role!=='admin').map(u=>u.phone.replace(/\D/g,''));
+  if (!phones.length) { toast(_lang==='ar'?'مفيش أرقام محفوظة':'No phones saved','err'); return; }
+  // Open first user on WhatsApp — for bulk they'd need WhatsApp Business API
+  const msg = _lang==='ar'
+    ? `تذكير: تفقد مهامك اليومية على ${_settings.name||'المرشد للمعاملات الحكومية'} 📅`
+    : `Reminder: Check your daily tasks on ${_settings.name||'Kuwait Mandoob'} 📅`;
+  window.open(`https://wa.me/965${phones[0]}?text=${encodeURIComponent(msg)}`, '_blank');
+  toast(`${phones.length} رقم محفوظ — افتح كل رقم يدوياً أو استخدم واتساب بيزنس`, 'ok');
+}
+function fmt(t) { return t.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n/g,'<br>'); }
+function esc(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = `toast show ${type}`;
+  setTimeout(() => el.className = 'toast', 3000);
+}
+function showOv(msg='...') { document.getElementById('ov-txt').textContent = msg; document.getElementById('ov').classList.add('show'); }
+function hideOv() { document.getElementById('ov').classList.remove('show'); }
+
+// ================================================================
+// INIT
+// ================================================================
+async function initApp() {
+  applyLang();
+  try {
+    const s = await fbDoc('system/settings');
+    if (s) {
+      _settings = s;
+      const days = s.trialDays || 10;
+      const tb = document.getElementById('trial-badge');
+      if (tb) tb.textContent = _lang === 'ar' ? `🎁 جرّب مجاناً ${days} أيام — بدون بطاقة` : `🎁 Free ${days}-day trial — no card needed`;
+    }
+  } catch(e) {}
+  await checkUrlParams();
+  applyLandingLang();
+  showScreen('landing');
+}
+
+// ================================================================
+// TEMPLATES
+// ================================================================
+let _templates = [];
+
+async function loadTemplates() {
+  try { _templates = await fbCollection('templates'); } catch(e) { _templates = []; }
+}
+
+async function uploadTemplate() {
+  const name   = document.getElementById('tpl-name').value.trim();
+  const entity = document.getElementById('tpl-entity').value.trim();
+  const desc   = document.getElementById('tpl-desc').value.trim();
+  const file   = document.getElementById('tpl-file').files[0];
+  const infoEl = document.getElementById('tpl-upload-info');
+  if (!name || !file) { toast('اكتب اسم النموذج واختار الملف', 'err'); return; }
+  if (file.size > 1.5 * 1024 * 1024) { toast('الملف أكبر من 1.5MB — ضغّطه أولاً', 'err'); return; }
+  showOv('جاري الرفع...');
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      await fbAdd('templates', {
+        name, entity: entity||'', desc: desc||'',
+        fileName: file.name, fileType: file.type,
+        fileData: e.target.result,
+        keywords: (name+' '+entity+' '+desc).toLowerCase(),
+        createdAt: new Date().toISOString()
+      });
+      _templates = await fbCollection('templates');
+      hideOv();
+      infoEl.innerHTML = `<span style="color:#86efac">✅ تم رفع "${name}"</span>`;
+      document.getElementById('tpl-name').value = '';
+      document.getElementById('tpl-entity').value = '';
+      document.getElementById('tpl-desc').value = '';
+      document.getElementById('tpl-file').value = '';
+      renderAdminTemplates();
+    } catch(err) { hideOv(); toast('❌ '+err.message, 'err'); }
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderAdminTemplates() {
+  const el = document.getElementById('tpl-admin-list');
+  if (!el) return;
+  if (_templates.length === 0) { el.innerHTML = '<p class="info-note">لا توجد نماذج مرفوعة بعد</p>'; return; }
+  el.innerHTML = _templates.map(t => `
+    <div class="card" style="display:flex;align-items:center;gap:12px;padding:12px 16px;margin-bottom:8px">
+      <div style="font-size:26px">${t.fileType&&t.fileType.includes('pdf')?'📕':'📘'}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:#e8edf5;font-family:'Almarai',sans-serif">${t.name}</div>
+        <div style="font-size:11px;color:var(--gray);font-family:'Almarai',sans-serif">${t.entity||''} ${t.desc?'— '+t.desc:''}</div>
+      </div>
+      <button onclick="deleteTemplate('${t.id}')" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#fca5a5;padding:4px 10px;border-radius:8px;cursor:pointer;font-family:'Almarai',sans-serif;font-size:12px">🗑️ حذف</button>
+    </div>`).join('');
+}
+
+async function deleteTemplate(id) {
+  if (!confirm('تأكيد الحذف؟')) return;
+  showOv('...');
+  try {
+    const { db, doc, deleteDoc } = fb();
+    await deleteDoc(doc(db, 'templates', id));
+    _templates = _templates.filter(t => t.id !== id);
+    hideOv(); renderAdminTemplates();
+  } catch(e) { hideOv(); toast('❌ '+e.message, 'err'); }
+}
+
+// Called after bot responds — check if any template matches the question
+function checkTemplatesForQuestion(q) {
+  if (_templates.length === 0) return;
+  const qLower = q.toLowerCase();
+  const matched = _templates.filter(t =>
+    t.keywords && t.keywords.split(' ').some(k => k.length > 2 && qLower.includes(k))
+  );
+  if (matched.length === 0) return;
+  // Add template download cards to last bot message
+  const msgs = document.getElementById('msgs');
+  const lastBot = msgs.querySelector('.bot-msg:last-child');
+  if (!lastBot) return;
+  const tplDiv = document.createElement('div');
+  tplDiv.style.cssText = 'margin-top:10px;display:flex;flex-direction:column;gap:6px';
+  tplDiv.innerHTML = `<div style="font-size:11px;color:var(--gold2);font-family:'Almarai',sans-serif;margin-bottom:2px">📄 نماذج متعلقة بسؤالك:</div>` +
+    matched.map(t => `
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:10px;padding:8px 12px">
+        <span style="font-size:20px">${t.fileType&&t.fileType.includes('pdf')?'📕':'📘'}</span>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:700;color:#e8edf5;font-family:'Almarai',sans-serif">${t.name}</div>
+          <div style="font-size:10px;color:var(--gray);font-family:'Almarai',sans-serif">${t.entity||''}</div>
+        </div>
+        <a href="${t.fileData}" download="${t.fileName}" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold2);padding:5px 12px;border-radius:8px;font-family:'Almarai',sans-serif;font-size:11px;text-decoration:none;white-space:nowrap">⬇️ تحميل</a>
+      </div>`).join('');
+  lastBot.appendChild(tplDiv);
+}
+
+function bnActive(p) {
+  document.querySelectorAll('.bn-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('bn-' + p);
+  if (btn) btn.classList.add('active');
+}
+
+// ================================================================
+// PWA INSTALL
+// ================================================================
+let _pwaPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _pwaPrompt = e;
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.style.display = 'flex';
+});
+function installPWA() {
+  if (!_pwaPrompt) return;
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(() => {
+    _pwaPrompt = null;
+    const btn = document.getElementById('pwa-install-btn');
+    if (btn) btn.style.display = 'none';
+  });
+}
+
+function waitForFirebase() {
+  if (window._firebaseReady) {
+    initApp();
+  } else {
+    setTimeout(waitForFirebase, 50);
+  }
+}
+
+// Fallback — if Firebase takes too long just show landing
+setTimeout(() => {
+  const active = document.querySelector('.screen.active');
+  if (active && active.id === 'screen-init') {
+    window._firebaseReady = true;
+    showScreen('landing');
+  }
+}, 5000);
+
+// Show landing page IMMEDIATELY — no need to wait for Firebase
+applyLang();
+applyLandingLang();
+showScreen('landing');
+
+// Then connect Firebase in the background
+waitForFirebase();
+</script>
+</body>
+</html>
