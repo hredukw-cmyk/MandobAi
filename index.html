@@ -1622,6 +1622,8 @@ async function doLogin() {
     errEl.style.display = 'block';
     if (e.message && e.message.includes('Firebase')) {
       errEl.textContent = e.message;
+    } else if (e.code) {
+      errEl.textContent = e.code;
     } else {
       errEl.textContent = t('loginErr');
     }
