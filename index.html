@@ -75,7 +75,7 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
 .spin0{width:48px;height:48px;border:3px solid rgba(201,168,76,0.2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite}
 
 /* LOGIN / SUBSCRIBE shared */
-.auth-bg{align-items:center;justify-content:center;padding:20px;
+.auth-bg{align-items:center;justify-content:flex-start;padding:20px;overflow-y:auto;
   background:radial-gradient(ellipse at 65% 0%,#1a3a6e33 0%,transparent 60%),
              radial-gradient(ellipse at 15% 100%,#c9a84c15 0%,transparent 50%),var(--navy);
   position:relative}
@@ -3036,7 +3036,7 @@ function renderAnnouncements() {
       <span class="ann-tag ${tagClass}">${tagLabel}</span>
       ${isUnread?'<span style="float:left;background:var(--gold2);width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;margin-top:4px"></span>':''}
       <div style="font-size:14px;font-weight:700;color:#e8edf5;margin-bottom:6px">${a.title}</div>
-      <div style="font-size:13px;font-family:'Almarai',sans-serif;color:#c5cdd8;line-height:1.75;white-space:pre-wrap">${a.body}</div>
+      <div style="font-size:13px;font-family:'Almarai',sans-serif;color:#c5cdd8;line-height:1.75;white-space:pre-wrap">${a.body.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" style="color:var(--gold2);text-decoration:underline;word-break:break-all">$1</a>')}</div>
       ${a.imgUrl?`<img class="ann-img" src="${a.imgUrl}" alt="" onerror="this.style.display='none'" onclick="window.open('${a.imgUrl}','_blank')" />`:''}
       <div style="font-size:11px;color:var(--gray);font-family:'Almarai',sans-serif;margin-top:10px">📅 ${dateStr}</div>
     </div>`;
