@@ -173,9 +173,9 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
 .panel{display:none;flex:1;overflow:hidden;min-height:0;width:100%}
 .panel.active{display:flex;flex-direction:column;justify-content:flex-start}
 
-/* All scrollable panels */
+/* All scrollable panels — desktop */
 #panel-history,#panel-favorites,#panel-announce,#panel-calendar,#panel-templates-user{
-  overflow-y:auto;padding:12px;align-items:stretch;
+  overflow-y:auto;padding:12px;align-items:stretch;height:calc(100dvh - 50px);
 }
 
 /* BOTTOM NAV - mobile only */
