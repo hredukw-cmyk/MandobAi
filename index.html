@@ -171,10 +171,10 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
 
 /* PANELS */
 .panel{display:none;flex:1;overflow:hidden;min-height:0;width:100%}
-.panel.active{display:flex}
+.panel.active{display:flex;flex-direction:column}
 
 /* All scrollable panels */
-#panel-history,#panel-favorites,#panel-announce,#panel-calendar,#panel-templates-user{
+#panel-history,#panel-favorites,#panel-announce,#panel-calendar,#panel-tasks,#panel-templates-user{
   flex-direction:column;overflow-y:auto;padding:12px;justify-content:flex-start;align-items:stretch;
 }
 
@@ -269,9 +269,9 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
   font-size:13px;font-family:'Almarai',sans-serif;transition:all .2s;border-right:3px solid transparent}
 .si:hover{color:var(--gold2);background:rgba(201,168,76,0.05)}
 .si.active{color:var(--gold2);background:rgba(201,168,76,0.08);border-right-color:var(--gold)}
-.ac{flex:1;overflow-y:auto;padding:14px;display:block;height:100%}
+.ac{flex:1;overflow-y:auto;padding:14px;display:block;height:100%;align-items:flex-start}
 .sub-panel{display:none;width:100%}
-.sub-panel.active{display:block;width:100%}
+.sub-panel.active{display:block;width:100%;padding-top:0}
 .sec-title{font-size:15px;font-weight:700;color:var(--gold2);margin-bottom:12px;font-family:'Almarai',sans-serif}
 .card{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px}
 .sec-title{font-size:17px;font-weight:900;color:var(--gold2);margin-bottom:16px;display:flex;align-items:center;gap:8px}
@@ -421,23 +421,28 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
     height:calc(100dvh - 46px - 58px);
     max-height:calc(100dvh - 46px - 58px);
     overflow:hidden;
+    justify-content:flex-start !important;
+    align-items:stretch !important;
   }
   .panel.active{display:flex}
   #panel-chat{height:calc(100dvh - 46px - 58px)}
 
   /* Scrollable panels */
-  #panel-history,#panel-favorites,#panel-announce,#panel-calendar{
+  #panel-history,#panel-favorites,#panel-announce,#panel-calendar,#panel-tasks,#panel-templates-user{
     overflow-y:auto !important;
     padding:10px !important;
     height:calc(100dvh - 46px - 58px) !important;
     justify-content:flex-start !important;
-    align-items:stretch !important;
+    align-items:flex-start !important;
+    display:flex !important;
+    flex-direction:column !important;
   }
 
   /* Admin */
   #panel-admin{height:calc(100dvh - 46px - 58px);overflow:hidden}
   .sidebar{width:44px;overflow:hidden}.si span{display:none}
-  .ac{overflow-y:auto;padding:8px;height:100%}
+  .ac{overflow-y:auto;padding:8px;height:100%;justify-content:flex-start;align-items:flex-start}
+  .sub-panel.active{display:block;width:100%;height:100%}
 
   /* Forms */
   .frow{grid-template-columns:1fr}
@@ -2574,9 +2579,11 @@ ${numberedChunks.length > 0 ? numberedChunks.join('\n\n---\n\n') : '(لا توج
       } catch(e){}
     }
   } catch(e) { typing.remove(); addBot('❌ '+e.message); }
-  _busy = false;
-  document.getElementById('send-btn').disabled = false;
-  input.focus();
+  finally {
+    _busy = false;
+    document.getElementById('send-btn').disabled = false;
+    input.focus();
+  }
 }
 
 function addUserMsg(text, imgData=null) {
