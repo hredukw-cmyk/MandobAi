@@ -171,7 +171,7 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
 
 /* PANELS */
 .panel{display:none;flex:1;overflow:hidden;min-height:0;width:100%;align-self:stretch}
-.panel.active{display:flex;flex-direction:column}
+.panel.active{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch}
 
 /* All scrollable panels */
 #panel-history,#panel-favorites,#panel-announce,#panel-calendar,#panel-tasks,#panel-templates-user{
@@ -778,7 +778,7 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
   </div><!-- end panel-chat -->
 
   <!-- ANNOUNCEMENTS PANEL -->
-  <div class="panel" id="panel-announce">
+  <div class="panel" id="panel-announce" style="padding:12px;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div class="sec-title" style="margin-bottom:0">📢 <span id="ann-title">الإعلانات والقرارات</span></div>
       <button onclick="markAllRead()" class="btn btn-ghost" style="padding:5px 12px;font-size:12px" id="ann-read-all">تحديد كمقروء</button>
@@ -787,7 +787,7 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
   </div>
 
   <!-- CALENDAR PANEL -->
-  <div class="panel" id="panel-calendar">
+  <div class="panel" id="panel-calendar" style="padding:12px;overflow-y:auto">
     <div style="max-width:700px;margin:0 auto;width:100%">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div class="sec-title" style="margin-bottom:0">📅 <span id="cal-title">مهامي</span></div>
@@ -846,7 +846,7 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
   </div>
 
   <!-- HISTORY PANEL -->
-  <div class="panel" id="panel-history">
+  <div class="panel" id="panel-history" style="padding:12px;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
       <div class="sec-title" style="margin-bottom:0">🕐 <span id="hist-title">سجل المحادثات</span></div>
       <div style="position:relative">
@@ -857,7 +857,7 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
   </div>
 
   <!-- FAVORITES PANEL -->
-  <div class="panel" id="panel-favorites">
+  <div class="panel" id="panel-favorites" style="padding:12px;overflow-y:auto">
     <div class="sec-title">⭐ <span id="fav-title">المفضلة</span></div>
     <div id="fav-list"><div style="text-align:center;padding:40px;color:var(--gray);font-family:'Almarai',sans-serif">لا توجد إجابات محفوظة بعد</div></div>
   </div>
