@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -1615,7 +1615,7 @@ async function doLogin() {
   if (btn) btn.disabled = true;
   try {
     const _fbAuth = await waitFb();
-    await signInWithEmailAndPassword(_fbAuth.auth, email, pass);
+    await _fbAuth.signInWithEmailAndPassword(_fbAuth.auth, email, pass);
   } catch(e) {
     hideOv();
     if (btn) btn.disabled = false;
@@ -1846,7 +1846,7 @@ async function createAccount(name, email, phone='', paid=false, pass='') {
   showOv(t('creatingAcc'));
   try {
     const _fbc = await waitFb();
-    const uc = await createUserWithEmailAndPassword(_fbc.auth, email, pass);
+    const uc = await _fbc.createUserWithEmailAndPassword(_fbc.auth, email, pass);
     await fbSet(`users/${uc.user.uid}`, {
       name, email, phone, role:'user', active:true, paid,
       created: new Date().toISOString()
