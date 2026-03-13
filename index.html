@@ -2445,8 +2445,15 @@ async function sendMsg() {
       const combined = [correctionChunk, ...filtered];
       const BATCH = 200; const batches = [];
       for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
-      await fbSet('system/chunks', { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() });
-      for (let i = 0; i < batches.length; i++) await fbSet(`system/chunks_${i}`, { data: batches[i] });
+      const newMeta = { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() };
+      // استخدم overwrite مش merge عشان يمسح القديم
+      const { db, doc, setDoc } = await waitFb();
+      await setDoc(doc(db, 'system', 'chunks'), newMeta);
+      for (let i = 0; i < batches.length; i++) {
+        await setDoc(doc(db, 'system', `chunks_${i}`), { data: batches[i] });
+      }
+      // امسح الـ cache من localStorage
+      Object.keys(localStorage).filter(k => k.startsWith('chunks_v_')).forEach(k => localStorage.removeItem(k));
       _chunks = combined;
       const removed = _chunks.length - combined.length;
       addBot(`✅ تم حفظ التصحيح وحذف المعلومات القديمة المتعارضة`);
