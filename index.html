@@ -2269,7 +2269,8 @@ function chunkText(text) {
     const c = lines.slice(i, i+25).join('\n');
     if (c.length > 80) chunks.push(c);
   }
-  return chunks;
+  // عكس الترتيب — اللي في أسفل الملف أحدث، يتحط في آخر الـ array عشان يطلع أول في البحث
+  return chunks.reverse();
 }
 
 // ================================================================
@@ -2410,9 +2411,11 @@ function searchChunks(q, n=10) {
   if (!roots.length || !_chunks.length) return _chunks.slice(-n).map(c => typeof c === 'object' ? c.text : c);
   return _chunks.map((c, idx) => {
     const text = typeof c === 'object' ? c.text : c;
+    const isCorrection = text.includes('أولوية قصوى');
     const score = roots.reduce((sc,w) => sc + (text.includes(w) ? (w.length > 4 ? 3 : 2) : 0), 0);
-    const recencyBoost = idx / _chunks.length;
-    return { text, s: score + (score > 0 ? recencyBoost : 0) };
+    const recencyBoost = (idx / _chunks.length) * 10; // أقوى — الأحدث يفوز دايماً
+    const correctionBoost = isCorrection ? 1000 : 0; // تصحيحات دايماً فوق
+    return { text, s: score + (score > 0 ? recencyBoost : 0) + correctionBoost };
   }).sort((a,b) => b.s-a.s).slice(0,n).filter(x=>x.s>0).map(x=>x.text);
 }
 
@@ -2430,14 +2433,23 @@ async function sendMsg() {
     if (correction.length > 10) {
       input.value = ''; input.style.height = 'auto';
       addUserMsg(q);
-      const correctionChunk = `[تصحيح رسمي - أولوية قصوى]\n${correction}`;
-      const combined = [..._chunks, correctionChunk];
+      const correctionChunk = `[تصحيح رسمي - أولوية قصوى 🔴]\n${correction}`;
+      // استخرج الكلمات المفتاحية من التصحيح
+      const corrWords = correction.split(/\s+/).filter(w => w.length > 3);
+      // احذف الـ chunks القديمة اللي بتتعارض مع التصحيح (تحتوي على نفس الكلمات)
+      const filtered = _chunks.filter(c => {
+        if (c.includes('أولوية قصوى')) return false; // احذف تصحيحات قديمة عن نفس الموضوع
+        const matchCount = corrWords.filter(w => c.includes(w)).length;
+        return matchCount < 3; // لو فيه 3 كلمات مشتركة أو أكتر = نفس الموضوع = احذفه
+      });
+      const combined = [correctionChunk, ...filtered];
       const BATCH = 200; const batches = [];
       for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
       await fbSet('system/chunks', { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() });
       for (let i = 0; i < batches.length; i++) await fbSet(`system/chunks_${i}`, { data: batches[i] });
       _chunks = combined;
-      addBot('✅ تم حفظ التصحيح — سيُعتمد في الإجابات القادمة');
+      const removed = _chunks.length - combined.length;
+      addBot(`✅ تم حفظ التصحيح وحذف المعلومات القديمة المتعارضة`);
       return;
     }
   }
@@ -2478,7 +2490,7 @@ async function sendMsg() {
   try {
     const relChunks = searchChunks(q, 10);
     // Number chunks so Claude knows recency (higher number = newer)
-    const numberedChunks = relChunks.map((c, i) => `[معلومة ${i+1} من ${relChunks.length} — ${i >= relChunks.length-2 ? '🆕 حديثة' : 'قديمة'}]\n${c}`);
+    const numberedChunks = relChunks.map((c, i) => `[معلومة ${i+1} — ${i === 0 ? '🆕 الأحدث والأدق' : 'قديمة — تجاهل لو تعارضت مع الأحدث'}]\n${c}`);
     const relLocs   = findRelatedLocs(q);
     const locStr = relLocs.length > 0
       ? '\n\n📍 Related entities:\n' + relLocs.map(l => `- ${l.name}${l.url?' ← '+l.url:''}${l.address?' | '+l.address:''}${l.notes?' | '+l.notes:''}`).join('\n')
@@ -2520,6 +2532,8 @@ ${numberedChunks.length > 0 ? numberedChunks.join('\n\n---\n\n') : '(no specific
 - لو الطلب يحتمل أكثر من مسار → اسأل سؤال استيضاحي واحد أولاً
 - نبّه دائماً للروابط بين المعاملات (مثلاً: لا تجديد إقامة بدون ضمان صحي، لا بطاقة مدنية بدون تحديث الإقامة)
 - لو وجدت معلومتين عن نفس الموضوع → اعتمد الأحدث (المميزة بـ 🆕) واذكر التحديث
+    - المعلومة المرقمة ١ هي الأحدث دائماً — في حالة التعارض اعتمدها وتجاهل الأقدم
+    - أي معلومة مسبوقة بـ [تصحيح رسمي - أولوية قصوى 🔴] = اعتمدها فوراً وتجاهل أي معلومة تعارضها تماماً
 - لا تذكر "جروب" أو "محادثات" أو "قاعدة بيانات" أو "مصدر"
 
 النبرة:
