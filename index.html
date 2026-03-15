@@ -1007,6 +1007,15 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
           </div>
           <input type="file" id="admin-img-file" accept="image/*,.pdf" style="display:none" onchange="uploadImageOrPdf(this)">
           <div id="img-upload-info" style="margin-top:8px;font-size:12px;font-family:'Almarai',sans-serif"></div>
+          <!-- Preview area -->
+          <div id="img-preview-area" style="display:none;margin-top:12px">
+            <div style="font-size:13px;font-weight:700;color:var(--gold2);margin-bottom:8px">📋 المعلومات المستخرجة — راجعها قبل الحفظ:</div>
+            <textarea id="img-preview-text" style="width:100%;min-height:180px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;color:#e8edf5;font-family:'Almarai',sans-serif;font-size:13px;padding:12px;resize:vertical;line-height:1.8"></textarea>
+            <div style="display:flex;gap:10px;margin-top:10px">
+              <button class="btn btn-gold" onclick="confirmSaveExtracted()">✅ حفظ في قاعدة المعرفة</button>
+              <button class="btn btn-ghost" onclick="cancelSaveExtracted()">❌ إلغاء</button>
+            </div>
+          </div>
         </div>
 
         <div class="card">
@@ -2215,8 +2224,24 @@ async function uploadImageOrPdf(input) {
 
     const extractedText = data.content[0].text;
 
-    // Save as chunks
-    const newChunks = chunkText(extractedText);
+    // عرض المعلومات للمراجعة قبل الحفظ
+    document.getElementById('img-preview-text').value = extractedText;
+    document.getElementById('img-preview-area').style.display = 'block';
+    infoEl.innerHTML = '<span style="color:var(--gold2)">📋 راجع المعلومات أدناه ثم اضغط حفظ</span>';
+    input.value = '';
+  } catch(e) {
+    infoEl.innerHTML = `<span style="color:#fca5a5">❌ ${e.message}</span>`;
+  }
+  zone.style.opacity = '1';
+}
+
+async function confirmSaveExtracted() {
+  const text = document.getElementById('img-preview-text').value.trim();
+  if (!text) return;
+  const infoEl = document.getElementById('img-upload-info');
+  infoEl.innerHTML = '<span style="color:var(--gold2)">⏳ جاري الحفظ...</span>';
+  try {
+    const newChunks = chunkText(text);
     const combined = [..._chunks, ...newChunks];
     const BATCH = 200; const batches = [];
     for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
@@ -2225,14 +2250,17 @@ async function uploadImageOrPdf(input) {
     for (let i = 0; i < batches.length; i++) await setDoc(doc(db, 'system', `chunks_${i}`), { data: batches[i] });
     Object.keys(localStorage).filter(k => k.startsWith('chunks_v_')).forEach(k => localStorage.removeItem(k));
     _chunks = combined;
-
-    infoEl.innerHTML = `<span style="color:#86efac">✅ تم استخراج المعلومات وإضافة ${newChunks.length} قطعة معرفة جديدة</span>`;
+    document.getElementById('img-preview-area').style.display = 'none';
+    infoEl.innerHTML = `<span style="color:#86efac">✅ تم الحفظ — ${newChunks.length} قطعة معرفة جديدة</span>`;
     document.getElementById('chunks-info').textContent = _chunks.length + ' chunk';
-    input.value = '';
   } catch(e) {
     infoEl.innerHTML = `<span style="color:#fca5a5">❌ ${e.message}</span>`;
   }
-  zone.style.opacity = '1';
+}
+
+function cancelSaveExtracted() {
+  document.getElementById('img-preview-area').style.display = 'none';
+  document.getElementById('img-upload-info').innerHTML = '';
 }
 
 async function uploadData(input) {
