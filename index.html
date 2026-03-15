@@ -1089,9 +1089,24 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
         </div>
 
         <div class="card">
-          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:8px">Anthropic API Key</div>
-          <p class="info-note" id="api-note">بتحصل عليه من <strong>console.anthropic.com</strong></p>
-          <div class="fld"><label>API Key</label><input type="password" id="s-api-key" placeholder="sk-ant-api03-..." /></div>
+          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:8px">🤖 مزود الذكاء الاصطناعي</div>
+          <div class="fld">
+            <label>اختر المزود</label>
+            <select id="s-ai-provider" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:#e8edf5;font-family:'Almarai',sans-serif;width:100%;font-size:13px" onchange="toggleProviderKey()">
+              <option value="claude">Claude (Anthropic)</option>
+              <option value="gemini">Gemini (Google)</option>
+            </select>
+          </div>
+          <div class="fld" id="claude-key-row">
+            <label>Anthropic API Key</label>
+            <input type="password" id="s-api-key" placeholder="sk-ant-api03-..." />
+            <p class="info-note" style="margin-top:4px">من <strong>console.anthropic.com</strong></p>
+          </div>
+          <div class="fld" id="gemini-key-row" style="display:none">
+            <label>Gemini API Key</label>
+            <input type="password" id="s-gemini-key" placeholder="AIzaSy..." />
+            <p class="info-note" style="margin-top:4px">من <strong>aistudio.google.com</strong></p>
+          </div>
           <div class="arow">
             <button class="btn btn-gold" onclick="saveSettings()" id="save-btn">💾 <span id="save-lbl">حفظ</span></button>
             <button class="btn btn-ghost" onclick="testApi()" id="test-btn">🧪 <span id="test-lbl">اختبار</span></button>
@@ -1767,6 +1782,8 @@ async function loadSettings() {
 async function saveSettings() {
   const s = {
     apiKey:       document.getElementById('s-api-key').value.trim(),
+    geminiKey:    document.getElementById('s-gemini-key').value.trim(),
+    aiProvider:   document.getElementById('s-ai-provider').value,
     name:         document.getElementById('s-name').value.trim(),
     price:        document.getElementById('s-price').value.trim(),
     trialDays:    parseInt(document.getElementById('s-trial-days').value) || 10,
@@ -1791,6 +1808,8 @@ async function saveSettings() {
 function fillSettingsForm() {
   const s = _settings;
   if (s.apiKey)       document.getElementById('s-api-key').value = s.apiKey;
+  if (s.geminiKey)    document.getElementById('s-gemini-key').value = s.geminiKey;
+  if (s.aiProvider)   { document.getElementById('s-ai-provider').value = s.aiProvider; toggleProviderKey(); }
   if (s.name)         document.getElementById('s-name').value = s.name;
   if (s.price)        document.getElementById('s-price').value = s.price;
   if (s.trialDays)    document.getElementById('s-trial-days').value = s.trialDays;
@@ -1800,6 +1819,12 @@ function fillSettingsForm() {
   if (s.ejsTemplate)  document.getElementById('s-ejs-tpl').value = s.ejsTemplate;
   if (s.ejsPublicKey) document.getElementById('s-ejs-key').value = s.ejsPublicKey;
   updateModeUI(s.mode || 'free');
+}
+
+function toggleProviderKey() {
+  const p = document.getElementById('s-ai-provider').value;
+  document.getElementById('claude-key-row').style.display = p === 'claude' ? 'block' : 'none';
+  document.getElementById('gemini-key-row').style.display = p === 'gemini' ? 'block' : 'none';
 }
 
 async function setMode(mode) {
@@ -2677,17 +2702,46 @@ ${numberedChunks.length > 0 ? numberedChunks.join('\n\n---\n\n') : '(لا توج
       ];
     }
 
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'x-api-key':_settings.apiKey,
-        'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
-      body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, system, messages:_chatHistory })
-    });
-    const data = await r.json();
-    typing.remove();
-    if (data.error) { addBot('❌ '+data.error.message); _chatHistory.pop(); }
-    else {
-      const ans = data.content[0].text;
+    const provider = _settings.aiProvider || 'claude';
+    let ans = '';
+
+    if (provider === 'gemini') {
+      // Gemini API
+      const geminiKey = _settings.geminiKey;
+      if (!geminiKey) { typing.remove(); addBot('❌ Gemini API Key غير موجود في الإعدادات'); _chatHistory.pop(); return; }
+      const geminiMessages = _chatHistory.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+      const gr = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: system }] },
+          contents: geminiMessages,
+          generationConfig: { maxOutputTokens: 2000 }
+        })
+      });
+      const gdata = await gr.json();
+      typing.remove();
+      if (gdata.error) { addBot('❌ ' + gdata.error.message); _chatHistory.pop(); }
+      else { ans = gdata.candidates?.[0]?.content?.parts?.[0]?.text || ''; }
+    } else {
+      // Claude API
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'x-api-key':_settings.apiKey,
+          'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ model:'claude-sonnet-4-5', max_tokens:2000, system, messages:_chatHistory })
+      });
+      const data = await r.json();
+      typing.remove();
+      if (data.error) { addBot('❌ '+data.error.message); _chatHistory.pop(); }
+      else { ans = data.content[0].text; }
+    }
+
+    const data = { error: null }; // provider handled above
+    if (ans) {
       _chatHistory.push({ role:'assistant', content:ans });
       const msgId = Date.now().toString();
       addBot(ans, relChunks.length, relLocs, msgId);
