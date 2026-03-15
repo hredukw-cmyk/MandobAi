@@ -997,8 +997,20 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
           <div id="fetch-info" style="margin-top:8px;font-size:12px;font-family:'Almarai',sans-serif"></div>
         </div>
 
+        <div class="card" style="border-color:rgba(201,168,76,0.35)">
+          <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:6px">🖼️ رفع صورة أو PDF للقراءة الذكية</div>
+          <p class="info-note">ارفع صورة أو PDF وهو يقراه ويفهمه ويضيف معلوماته لقاعدة المعرفة تلقائياً</p>
+          <div class="upload-zone" onclick="document.getElementById('admin-img-file').click()" id="img-upload-zone">
+            <div style="font-size:32px;margin-bottom:8px">📄</div>
+            <h3>اسحب صورة أو PDF هنا</h3>
+            <p style="font-size:12px;color:var(--gray);font-family:'Almarai',sans-serif;margin-top:4px">يدعم: JPG, PNG, PDF</p>
+          </div>
+          <input type="file" id="admin-img-file" accept="image/*,.pdf" style="display:none" onchange="uploadImageOrPdf(this)">
+          <div id="img-upload-info" style="margin-top:8px;font-size:12px;font-family:'Almarai',sans-serif"></div>
+        </div>
+
         <div class="card">
-          <div class="upload-zone" onclick="document.getElementById('admin-file').click()">
+
             <div style="font-size:32px;margin-bottom:8px">📂</div>
             <h3 id="upload-title">رفع محادثات واتساب (.txt)</h3>
             <p id="upload-sub">اسحب الملف هنا أو اضغط للاختيار</p>
@@ -2149,7 +2161,82 @@ async function loadChunks() {
   } catch(e) { _chunks = []; }
 }
 
+async function uploadImageOrPdf(input) {
+  if (!input.files[0]) return;
+  const file = input.files[0];
+  const infoEl = document.getElementById('img-upload-info');
+  const zone = document.getElementById('img-upload-zone');
+  const apiKey = _settings.apiKey;
+  if (!apiKey) { infoEl.innerHTML = '<span style="color:#fca5a5">❌ API Key غير موجود في الإعدادات</span>'; return; }
+
+  infoEl.innerHTML = '<span style="color:var(--gold2)">⏳ جاري القراءة الذكية...</span>';
+  zone.style.opacity = '0.5';
+
+  try {
+    // Convert to base64
+    const base64 = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result.split(',')[1]);
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+
+    const isPdf = file.type === 'application/pdf';
+    const mediaType = isPdf ? 'application/pdf' : file.type;
+
+    // Send to Claude API
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 4000,
+        messages: [{
+          role: 'user',
+          content: [
+            isPdf
+              ? { type: 'document', source: { type: 'base64', media_type: mediaType, data: base64 } }
+              : { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: `استخرج كل المعلومات والإجراءات الموجودة في هذا الملف بشكل مفصل وواضح. 
+اكتب كل المعلومات كنص منظم يصلح كقاعدة معرفة عن الإجراءات الحكومية الكويتية.
+اكتب بالعربي. لا تقل "الملف يحتوي على" — فقط اكتب المعلومات مباشرة.` }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message);
+
+    const extractedText = data.content[0].text;
+
+    // Save as chunks
+    const newChunks = chunkText(extractedText);
+    const combined = [..._chunks, ...newChunks];
+    const BATCH = 200; const batches = [];
+    for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
+    const { db, doc, setDoc } = await waitFb();
+    await setDoc(doc(db, 'system', 'chunks'), { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() });
+    for (let i = 0; i < batches.length; i++) await setDoc(doc(db, 'system', `chunks_${i}`), { data: batches[i] });
+    Object.keys(localStorage).filter(k => k.startsWith('chunks_v_')).forEach(k => localStorage.removeItem(k));
+    _chunks = combined;
+
+    infoEl.innerHTML = `<span style="color:#86efac">✅ تم استخراج المعلومات وإضافة ${newChunks.length} قطعة معرفة جديدة</span>`;
+    document.getElementById('chunks-info').textContent = _chunks.length + ' chunk';
+    input.value = '';
+  } catch(e) {
+    infoEl.innerHTML = `<span style="color:#fca5a5">❌ ${e.message}</span>`;
+  }
+  zone.style.opacity = '1';
+}
+
 async function uploadData(input) {
+
   if (!input.files[0]) return;
   const file = input.files[0];
   showOv(t('uploading'));
