@@ -2698,18 +2698,7 @@ ${numberedChunks.length > 0 ? numberedChunks.join('\n\n---\n\n') : '(لا توج
           await fbAdd(`chats/${uid}/messages`, { q, ans, ts: new Date().toISOString() });
         } catch(e) {}
       }
-      // Auto-learn: save Q&A as chunk in background (don't await)
-      (async () => {
-        try {
-          const learnChunk = `[سؤال شائع]\nسؤال: ${q}\nإجابة: ${ans.slice(0, 300)}`;
-          const combined = [..._chunks, learnChunk];
-          const BATCH = 200; const batches = [];
-          for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
-          await fbSet('system/chunks', { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() });
-          for (let i = 0; i < batches.length; i++) await fbSet(`system/chunks_${i}`, { data: batches[i] });
-          _chunks = combined;
-        } catch(e) {}
-      })();
+      // Auto-learn disabled — بيانات المعرفة بس من الأدمن
       try {
         await fbSet('system/settings', { totalMsgs: (_settings.totalMsgs||0)+1 });
         _settings.totalMsgs = (_settings.totalMsgs||0)+1;
