@@ -941,11 +941,13 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
       <div class="sub-panel" id="sub-questions">
         <div class="sec-title">❓ <span id="questions-title">أسئلة المستخدمين</span></div>
         <div class="card" style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <button class="btn btn-gold" id="q-tab-all" onclick="qTab('all')" style="padding:6px 14px;font-size:12px">📋 كل الأسئلة</button>
+          <button class="btn btn-ghost" id="q-tab-trending" onclick="qTab('trending')" style="padding:6px 14px;font-size:12px">🔥 الأكثر تكراراً</button>
           <input id="q-search" type="text" placeholder="ابحث في الأسئلة..." style="flex:1;min-width:150px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:9px;padding:7px 12px;color:var(--text);font-family:'Almarai',sans-serif;font-size:13px;outline:none" oninput="filterAdminQuestions(this.value)" />
           <select id="q-filter-user" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:9px;padding:7px 10px;color:var(--text);font-family:'Almarai',sans-serif;font-size:13px" onchange="filterAdminQuestions(document.getElementById('q-search').value)">
             <option value="">كل المستخدمين</option>
           </select>
-          <button class="btn btn-gold" onclick="exportQuestionsAsTxt()" style="white-space:nowrap">📥 تصدير كـ txt</button>
+          <button class="btn btn-gold" onclick="exportQuestionsAsTxt()" style="white-space:nowrap">📥 تصدير</button>
         </div>
         <div id="admin-questions-list"><div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px;padding:12px">جاري التحميل...</div></div>
       </div>
@@ -1689,61 +1691,73 @@ async function onLoggedIn(profile) {
   await loadSettings();
 
   if (profile.role !== 'admin') {
-    const trialDays   = _settings.trialDays || 10;
-    const created     = new Date(profile.created);
-    const now         = new Date();
-    const trialPassed = Math.floor((now - created) / 86400000);
-    const trialLeft   = trialDays - trialPassed;
-    const mode        = _settings.mode || 'free';
+    const trialDays = _settings.trialDays || 10;
+    const mode      = _settings.mode || 'free';
+    const now       = new Date();
+    const isAr      = _lang === 'ar';
+    const chip      = document.getElementById('trial-days-chip');
 
-    // Check paid subscription days
-    let subDaysLeft = 0;
-    if (profile.paid && profile.paidUntil) {
-      subDaysLeft = Math.ceil((new Date(profile.paidUntil) - now) / 86400000);
-    }
-    const subActive = profile.paid && subDaysLeft > 0;
-    const isAr = _lang === 'ar';
-    const chip  = document.getElementById('trial-days-chip');
+    // وضع مجاني — يدخل بدون قيود ويظهر "مجاني"
+    if (mode === 'free') {
+      chip.textContent    = isAr ? '🆓 مجاني' : '🆓 Free';
+      chip.style.display  = 'inline-block';
+      chip.style.background = 'rgba(34,197,94,0.12)';
+      chip.style.color    = '#86efac';
+      chip.style.border   = '1px solid rgba(34,197,94,0.25)';
+      // إكمال التحميل بدون أي فحص
+    } else {
+      // وضع مدفوع — العد من تاريخ تفعيل الوضع المدفوع
+      const paidModeStart = _settings.paidModeStart ? new Date(_settings.paidModeStart) : now;
+      const daysPassed    = Math.floor((now - paidModeStart) / 86400000);
+      const trialLeft     = trialDays - daysPassed;
 
-    if (subActive) {
-      // Show subscription days remaining
-      chip.textContent     = isAr ? `🔔 ${subDaysLeft} يوم متبقي في الاشتراك` : `🔔 ${subDaysLeft} days left`;
-      chip.style.display   = 'inline-block';
-      chip.style.background = subDaysLeft <= 5 ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.12)';
-      chip.style.color      = subDaysLeft <= 5 ? '#fca5a5' : '#86efac';
-      chip.style.border     = subDaysLeft <= 5 ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(34,197,94,0.25)';
-    } else if (!profile.paid && trialLeft > 0) {
-      // Show trial days remaining
-      chip.textContent   = isAr ? `🎁 ${trialLeft} يوم تجربة` : `🎁 ${trialLeft} trial days`;
-      chip.style.display = 'inline-block';
-    }
-
-    // Sub expiry notification — send email if <= 3 days left and not notified today
-    if (subActive && subDaysLeft <= 3) {
-      const today = new Date().toISOString().split('T')[0];
-      if (profile.expiryNotifDate !== today) {
-        try {
-          await fbSet(`users/${profile.uid || window._currentUser.uid}`, { expiryNotifDate: today });
-          const { ejsService, ejsTemplate, ejsPublicKey, name: pName } = _settings;
-          if (ejsService && ejsTemplate && ejsPublicKey) {
-            emailjs.init(ejsPublicKey);
-            emailjs.send(ejsService, ejsTemplate, {
-              to_email: profile.email,
-              user_name: profile.name,
-              user_pass: '',
-              platform_name: pName || 'المرشد للمعاملات الحكومية',
-              login_url: `⚠️ اشتراكك ينتهي خلال ${subDaysLeft} يوم — جدّد الآن لتستمر في الخدمة`,
-            }).catch(()=>{});
-          }
-        } catch(e){}
+      // Check paid subscription
+      let subDaysLeft = 0;
+      if (profile.paid && profile.paidUntil) {
+        subDaysLeft = Math.ceil((new Date(profile.paidUntil) - now) / 86400000);
       }
-    }
-    const subExpired   = profile.paid && subDaysLeft <= 0;
-    const trialExpired = !profile.paid && trialLeft <= 0;
-    if (mode === 'paid' && (subExpired || trialExpired)) {
-      document.getElementById('pw-price').textContent = _settings.price || '5';
-      showScreen('paywall');
-      return;
+      const subActive = profile.paid && subDaysLeft > 0;
+
+      if (subActive) {
+        chip.textContent      = isAr ? `🔔 ${subDaysLeft} يوم متبقي` : `🔔 ${subDaysLeft} days left`;
+        chip.style.display    = 'inline-block';
+        chip.style.background = subDaysLeft <= 5 ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.12)';
+        chip.style.color      = subDaysLeft <= 5 ? '#fca5a5' : '#86efac';
+        chip.style.border     = subDaysLeft <= 5 ? '1px solid rgba(239,68,68,0.3)' : '1px solid rgba(34,197,94,0.25)';
+      } else if (trialLeft > 0) {
+        chip.textContent   = isAr ? `🎁 ${trialLeft} يوم متبقي` : `🎁 ${trialLeft} days left`;
+        chip.style.display = 'inline-block';
+        chip.style.background = 'rgba(201,168,76,0.12)';
+        chip.style.color   = '#e8c97a';
+        chip.style.border  = '1px solid rgba(201,168,76,0.3)';
+      }
+
+      // إشعار انتهاء الاشتراك
+      if (subActive && subDaysLeft <= 3) {
+        const today = new Date().toISOString().split('T')[0];
+        if (profile.expiryNotifDate !== today) {
+          try {
+            await fbSet(`users/${profile.uid || window._currentUser.uid}`, { expiryNotifDate: today });
+            const { ejsService, ejsTemplate, ejsPublicKey, name: pName } = _settings;
+            if (ejsService && ejsTemplate && ejsPublicKey) {
+              emailjs.init(ejsPublicKey);
+              emailjs.send(ejsService, ejsTemplate, {
+                to_email: profile.email, user_name: profile.name, user_pass: '',
+                platform_name: pName || 'المرشد للمعاملات الحكومية',
+                login_url: `⚠️ اشتراكك ينتهي خلال ${subDaysLeft} يوم`,
+              }).catch(()=>{});
+            }
+          } catch(e){}
+        }
+      }
+
+      const subExpired   = profile.paid && subDaysLeft <= 0;
+      const trialExpired = !profile.paid && trialLeft <= 0;
+      if (subExpired || trialExpired) {
+        document.getElementById('pw-price').textContent = _settings.price || '5';
+        showScreen('paywall');
+        return;
+      }
     }
   }
 
@@ -1830,8 +1844,13 @@ function toggleProviderKey() {
 async function setMode(mode) {
   showOv('...');
   try {
-    await fbSet('system/settings', { mode });
-    _settings.mode = mode;
+    const update = { mode };
+    // لما تفعّل الوضع المدفوع — احفظ التاريخ عشان يبدأ العد من دلوقتي
+    if (mode === 'paid' && _settings.mode !== 'paid') {
+      update.paidModeStart = new Date().toISOString();
+    }
+    await fbSet('system/settings', update);
+    _settings = { ..._settings, ...update };
     updateModeUI(mode);
     hideOv();
     toast(mode === 'free' ? t('toastModeFree') : t('toastModePaid'), 'ok');
@@ -3005,6 +3024,64 @@ async function loadAdminQuestions() {
   }
 }
 
+let _qCurrentTab = 'all';
+
+function qTab(tab) {
+  _qCurrentTab = tab;
+  document.getElementById('q-tab-all').className = tab === 'all' ? 'btn btn-gold' : 'btn btn-ghost';
+  document.getElementById('q-tab-trending').className = tab === 'trending' ? 'btn btn-gold' : 'btn btn-ghost';
+  if (tab === 'trending') renderTrending();
+  else renderAdminQuestions(_adminQs);
+}
+
+function renderTrending() {
+  const el = document.getElementById('admin-questions-list');
+  if (!_adminQs.length) { el.innerHTML = `<div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px;padding:12px">لا توجد أسئلة</div>`; return; }
+
+  // استخرج الكلمات المفتاحية من كل الأسئلة
+  const stops = ['في','على','من','إلى','عن','هل','كيف','ما','ماذا','متى','أين','لو','لماذا','ممكن','عايز','عاوز','اريد','أريد','انا','هو','هي','عندي','ابي','أبي','كان','يكون','تكون'];
+  const wordCount = {};
+  const questionCount = {};
+
+  _adminQs.forEach(m => {
+    const words = (m.q||'').split(/\s+/).filter(w => w.length > 3 && !stops.includes(w));
+    words.forEach(w => { wordCount[w] = (wordCount[w]||0) + 1; });
+
+    // مطابقة الأسئلة المتشابهة
+    const key = (m.q||'').slice(0, 25).trim();
+    questionCount[key] = (questionCount[key]||0) + 1;
+  });
+
+  // أكثر الكلمات تكراراً
+  const topWords = Object.entries(wordCount)
+    .sort((a,b) => b[1]-a[1]).slice(0, 20);
+
+  // أكثر الأسئلة تكراراً
+  const topQuestions = Object.entries(questionCount)
+    .sort((a,b) => b[1]-a[1]).slice(0, 15)
+    .filter(([k,v]) => v > 1);
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:12px">🔥 أكثر الكلمات تكراراً</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${topWords.map(([w,c]) => `
+          <div style="background:rgba(201,168,76,${Math.min(0.05+c*0.03,0.3)});border:1px solid rgba(201,168,76,${Math.min(0.2+c*0.05,0.6)});border-radius:20px;padding:5px 14px;font-family:'Almarai',sans-serif;font-size:13px;color:#e8edf5">
+            ${w} <span style="color:var(--gold2);font-weight:700">${c}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+    ${topQuestions.length ? `
+    <div class="card">
+      <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:12px">❓ أسئلة متكررة</div>
+      ${topQuestions.map(([q,c]) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <div style="font-size:13px;color:#e8edf5;font-family:'Almarai',sans-serif">${q}...</div>
+          <span style="background:rgba(201,168,76,0.15);color:var(--gold2);border-radius:12px;padding:2px 10px;font-size:12px;font-weight:700;white-space:nowrap">${c}x</span>
+        </div>`).join('')}
+    </div>` : ''}`;
+}
+
 function renderAdminQuestions(items) {
   const el = document.getElementById('admin-questions-list');
   if (!items.length) { el.innerHTML = `<div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px;padding:12px">لا توجد أسئلة</div>`; return; }
@@ -3566,11 +3643,42 @@ async function deleteTemplate(id) {
 function checkTemplatesForQuestion(q) {
   if (_templates.length === 0) return;
   const qLower = q.toLowerCase();
-  const matched = _templates.filter(t =>
-    t.keywords && t.keywords.split(' ').some(k => k.length > 2 && qLower.includes(k))
-  );
+
+  // كلمات مرادفة للنماذج
+  const synonyms = {
+    'نموذج': ['نموذج','فورم','استمارة','طلب','ورقة','ملف'],
+    'محضر': ['محضر','اجتماع','meeting','جلسة','تقرير اجتماع'],
+    'عقد': ['عقد','اتفاقية','contract','agreement'],
+    'إجازة': ['إجازة','اجازة','leave','vacation','غياب'],
+    'تقرير': ['تقرير','report','ملخص','تقييم'],
+    'شهادة': ['شهادة','certificate','خطاب','رسالة'],
+    'توظيف': ['توظيف','تعيين','hire','موظف جديد','استئجار'],
+    'استقالة': ['استقالة','resignation','انهاء خدمة'],
+  };
+
+  const matched = _templates.filter(t => {
+    if (!t.keywords && !t.name) return false;
+    const keywords = (t.keywords || '').split(/[\s,،]+/).filter(k => k.length > 1);
+    const nameWords = (t.name || '').split(/[\s,،]+/).filter(k => k.length > 1);
+    const allWords = [...keywords, ...nameWords];
+
+    return allWords.some(k => {
+      const kL = k.toLowerCase();
+      // مطابقة مباشرة
+      if (qLower.includes(kL)) return true;
+      // مطابقة جذر (أول 3 حروف)
+      if (kL.length > 3 && qLower.split(/\s+/).some(w => w.length > 3 && (w.startsWith(kL.slice(0,3)) || kL.startsWith(w.slice(0,3))))) return true;
+      // مطابقة مرادفات
+      for (const [key, syns] of Object.entries(synonyms)) {
+        if (syns.some(s => kL.includes(s) || s.includes(kL))) {
+          if (syns.some(s => qLower.includes(s))) return true;
+        }
+      }
+      return false;
+    });
+  });
+
   if (matched.length === 0) return;
-  // Add template download cards to last bot message
   const msgs = document.getElementById('msgs');
   const lastBot = msgs.querySelector('.bot-msg:last-child');
   if (!lastBot) return;
@@ -3584,9 +3692,32 @@ function checkTemplatesForQuestion(q) {
           <div style="font-size:12px;font-weight:700;color:#e8edf5;font-family:'Almarai',sans-serif">${t.name}</div>
           <div style="font-size:10px;color:var(--gray);font-family:'Almarai',sans-serif">${t.entity||''}</div>
         </div>
-        <a href="${t.fileData}" download="${t.fileName}" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold2);padding:5px 12px;border-radius:8px;font-family:'Almarai',sans-serif;font-size:11px;text-decoration:none;white-space:nowrap">⬇️ تحميل</a>
+        <a href="javascript:void(0)" onclick="downloadTemplate('${t.fileData}','${t.fileName}')" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold2);padding:5px 12px;border-radius:8px;font-family:'Almarai',sans-serif;font-size:11px;text-decoration:none;white-space:nowrap;cursor:pointer">⬇️ تحميل</a>
       </div>`).join('');
   lastBot.appendChild(tplDiv);
+}
+
+function downloadTemplate(fileData, fileName) {
+  try {
+    // حول data URL لـ Blob عشان يشتغل على كل المتصفحات والموبايل
+    const arr = fileData.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while(n--) u8arr[n] = bstr.charCodeAt(n);
+    const blob = new Blob([u8arr], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    toast('❌ خطأ في التحميل: ' + e.message, 'err');
+  }
 }
 
 function bnActive(p) {
