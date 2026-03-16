@@ -3680,42 +3680,30 @@ async function deleteTemplate(id) {
 function checkTemplatesForQuestion(q) {
   if (_templates.length === 0) return;
   const qLower = q.toLowerCase();
+  const qWords = qLower.split(/\s+/).filter(w => w.length > 2);
 
-  // كلمات مرادفة للنماذج
-  const synonyms = {
-    'نموذج': ['نموذج','فورم','استمارة','طلب','ورقة','ملف'],
-    'محضر': ['محضر','اجتماع','meeting','جلسة','تقرير اجتماع'],
-    'عقد': ['عقد','اتفاقية','contract','agreement'],
-    'إجازة': ['إجازة','اجازة','leave','vacation','غياب'],
-    'تقرير': ['تقرير','report','ملخص','تقييم'],
-    'شهادة': ['شهادة','certificate','خطاب','رسالة'],
-    'توظيف': ['توظيف','تعيين','hire','موظف جديد','استئجار'],
-    'استقالة': ['استقالة','resignation','انهاء خدمة'],
-  };
+  // score كل نموذج — بس اللي عنده score عالي يطلع
+  const scored = _templates.map(t => {
+    const nameWords = (t.name || '').toLowerCase().split(/[\s,،]+/).filter(k => k.length > 2);
+    const extraWords = (t.entity || '').toLowerCase().split(/[\s,،]+/).filter(k => k.length > 2);
+    const allWords = [...nameWords, ...extraWords];
+    let score = 0;
 
-  const matched = _templates.filter(t => {
-    if (!t.keywords && !t.name) return false;
-    const keywords = (t.keywords || '').split(/[\s,،]+/).filter(k => k.length > 1);
-    const nameWords = (t.name || '').split(/[\s,،]+/).filter(k => k.length > 1);
-    const allWords = [...keywords, ...nameWords];
-
-    return allWords.some(k => {
-      const kL = k.toLowerCase();
-      // مطابقة مباشرة
-      if (qLower.includes(kL)) return true;
-      // مطابقة جذر (أول 3 حروف)
-      if (kL.length > 3 && qLower.split(/\s+/).some(w => w.length > 3 && (w.startsWith(kL.slice(0,3)) || kL.startsWith(w.slice(0,3))))) return true;
-      // مطابقة مرادفات
-      for (const [key, syns] of Object.entries(synonyms)) {
-        if (syns.some(s => kL.includes(s) || s.includes(kL))) {
-          if (syns.some(s => qLower.includes(s))) return true;
-        }
-      }
-      return false;
+    allWords.forEach(k => {
+      // مطابقة مباشرة كاملة
+      if (qLower.includes(k)) score += 5;
+      // مطابقة جذر (أول 4 حروف) — أدق من 3
+      else if (k.length > 4 && qWords.some(w => w.length > 4 && w.slice(0,4) === k.slice(0,4))) score += 3;
     });
-  });
 
-  if (matched.length === 0) return;
+    return { t, score };
+  }).filter(x => x.score >= 3) // حد أدنى للدقة
+    .sort((a,b) => b.score - a.score)
+    .slice(0, 2); // أعلى نموذجين بس
+
+  if (scored.length === 0) return;
+  const matched = scored.map(x => x.t);
+
   const msgs = document.getElementById('msgs');
   const allBots = msgs.querySelectorAll('.msg.bot');
   const lastBot = allBots[allBots.length - 1];
