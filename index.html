@@ -957,7 +957,15 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
         <div class="sec-title">📢 <span id="ann-admin-title">نشر إعلان / قرار جديد</span></div>
         <div class="card">
           <div class="fld"><label id="ann-lbl-title">العنوان</label><input id="ann-inp-title" type="text" placeholder="مثال: قرار جديد بشأن تجديد الإقامة" /></div>
-          <div class="fld"><label id="ann-lbl-body">التفاصيل</label><textarea id="ann-inp-body" style="min-height:90px" placeholder="اكتب تفاصيل القرار أو الإعلان..."></textarea></div>
+          <div class="fld"><label id="ann-lbl-body">التفاصيل (اختياري)</label><textarea id="ann-inp-body" style="min-height:60px" placeholder="تفاصيل إضافية..."></textarea></div>
+          <div class="fld">
+            <label>📸 صورة الإعلان (اختياري)</label>
+            <div id="ann-img-zone" onclick="document.getElementById('ann-img-file').click()" style="border:2px dashed rgba(201,168,76,0.3);border-radius:10px;padding:16px;text-align:center;cursor:pointer;font-family:'Almarai',sans-serif;font-size:13px;color:var(--gray);transition:all .2s" onmouseover="this.style.borderColor='rgba(201,168,76,0.6)'" onmouseout="this.style.borderColor='rgba(201,168,76,0.3)'">
+              📸 اضغط لرفع صورة
+            </div>
+            <input type="file" id="ann-img-file" accept="image/*" style="display:none" onchange="previewAnnImg(this)">
+            <img id="ann-img-preview" style="display:none;width:100%;border-radius:10px;margin-top:8px;max-height:200px;object-fit:cover" />
+          </div>
           <div class="frow">
             <div class="fld"><label id="ann-lbl-type">النوع</label>
               <select id="ann-inp-type">
@@ -966,10 +974,10 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
                 <option value="info" id="ann-t-info">ℹ️ معلومة</option>
               </select>
             </div>
-            <div class="fld"><label id="ann-lbl-img">صورة (رابط URL اختياري)</label><input id="ann-inp-img" type="text" placeholder="https://..." /></div>
           </div>
           <div class="arow">
             <button class="btn btn-gold" onclick="publishAnnouncement()" id="ann-pub-btn">📢 نشر للكل</button>
+            <button class="btn btn-ghost" onclick="clearAnnForm()">🗑️ مسح</button>
           </div>
         </div>
         <div class="divider"></div>
@@ -2701,6 +2709,7 @@ ${numberedChunks.length > 0 ? numberedChunks.join('\n\n---\n\n') : '(no specific
     - المعلومة المرقمة ١ هي الأحدث دائماً — في حالة التعارض اعتمدها وتجاهل الأقدم
     - أي معلومة مسبوقة بـ [تصحيح رسمي - أولوية قصوى 🔴] = اعتمدها فوراً وتجاهل أي معلومة تعارضها تماماً
 - لا تذكر "جروب" أو "محادثات" أو "قاعدة بيانات" أو "مصدر"
+- لو سأل عن نموذج أو استمارة — أخبره أن النموذج متاح للتحميل تحت الرسالة مباشرة، لا تكتب محتوى النموذج
 
 النبرة:
 - مهنية وعملية وتستخدم مفردات السوق الكويتي: "تجهيز المعاملة"، "حجز موعد منصة متى"
@@ -3289,13 +3298,17 @@ function renderAnnouncements() {
     const tagClass = a.type === 'urgent' ? 'ann-urgent' : a.type === 'info' ? 'ann-info' : 'ann-news';
     const tagLabel = a.type === 'urgent' ? (_lang==='ar'?'🔴 عاجل':'🔴 Urgent') : a.type === 'info' ? (_lang==='ar'?'ℹ️ معلومة':'ℹ️ Info') : (_lang==='ar'?'📰 خبر':'📰 News');
     const dateStr = new Date(a.ts).toLocaleDateString(_lang==='ar'?'ar-KW':'en-KW', {year:'numeric',month:'short',day:'numeric'});
-    return `<div class="ann-item ${isUnread?'unread':''}" onclick="readAnn('${a.id}',this)">
-      <span class="ann-tag ${tagClass}">${tagLabel}</span>
-      ${isUnread?'<span style="float:left;background:var(--gold2);width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;margin-top:4px"></span>':''}
-      <div style="font-size:14px;font-weight:700;color:#e8edf5;margin-bottom:6px">${a.title}</div>
-      <div style="font-size:13px;font-family:'Almarai',sans-serif;color:#c5cdd8;line-height:1.75;white-space:pre-wrap">${a.body.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" style="color:var(--gold2);text-decoration:underline;word-break:break-all">$1</a>')}</div>
-      ${a.imgUrl?`<img class="ann-img" src="${a.imgUrl}" alt="" onerror="this.style.display='none'" onclick="window.open('${a.imgUrl}','_blank')" />`:''}
-      <div style="font-size:11px;color:var(--gray);font-family:'Almarai',sans-serif;margin-top:10px">📅 ${dateStr}</div>
+    return `<div class="ann-item ${isUnread?'unread':''}" onclick="readAnn('${a.id}',this)" style="padding:0;overflow:hidden">
+      ${a.imgUrl ? `<img src="${a.imgUrl}" alt="" onerror="this.style.display='none'" style="width:100%;max-height:260px;object-fit:cover;display:block;border-radius:14px 14px 0 0;cursor:pointer" onclick="event.stopPropagation();window.open('${a.imgUrl}','_blank')" />` : ''}
+      <div style="padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span class="ann-tag ${tagClass}">${tagLabel}</span>
+          ${isUnread?'<span style="background:var(--gold2);width:7px;height:7px;border-radius:50%;display:inline-block"></span>':''}
+          <span style="font-size:11px;color:var(--gray);font-family:\'Almarai\',sans-serif;margin-right:auto">📅 ${dateStr}</span>
+        </div>
+        <div style="font-size:15px;font-weight:800;color:#e8edf5;margin-bottom:6px;line-height:1.5">${a.title}</div>
+        ${a.body ? `<div style="font-size:13px;font-family:'Almarai',sans-serif;color:#c5cdd8;line-height:1.75;white-space:pre-wrap">${a.body.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" style="color:var(--gold2);text-decoration:underline;word-break:break-all">$1</a>')}</div>` : ''}
+      </div>
     </div>`;
   }).join('');
 }
@@ -3330,20 +3343,44 @@ function updateBellBadge() {
   }
 }
 
+let _annImgData = null;
+
+function previewAnnImg(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 1.5 * 1024 * 1024) { toast('الصورة أكبر من 1.5MB — ضغّطها أولاً', 'err'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    _annImgData = e.target.result;
+    const preview = document.getElementById('ann-img-preview');
+    preview.src = _annImgData;
+    preview.style.display = 'block';
+    document.getElementById('ann-img-zone').innerHTML = '✅ تم رفع الصورة';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearAnnForm() {
+  document.getElementById('ann-inp-title').value = '';
+  document.getElementById('ann-inp-body').value = '';
+  document.getElementById('ann-inp-type').value = 'news';
+  document.getElementById('ann-img-preview').style.display = 'none';
+  document.getElementById('ann-img-zone').innerHTML = '📸 اضغط لرفع صورة';
+  document.getElementById('ann-img-file').value = '';
+  _annImgData = null;
+}
+
 async function publishAnnouncement() {
   const title = document.getElementById('ann-inp-title').value.trim();
   const body  = document.getElementById('ann-inp-body').value.trim();
   const type  = document.getElementById('ann-inp-type').value;
-  const imgUrl= document.getElementById('ann-inp-img').value.trim();
-  if (!title || !body) { toast(_lang==='ar'?'اكتب العنوان والتفاصيل':'Fill title and body', 'err'); return; }
+  if (!title) { toast(_lang==='ar'?'اكتب العنوان على الأقل':'Fill the title', 'err'); return; }
   showOv('...');
   try {
-    await fbAdd('announcements', { title, body, type, imgUrl, ts: new Date().toISOString() });
+    await fbAdd('announcements', { title, body: body||'', type, imgUrl: _annImgData||'', ts: new Date().toISOString() });
     hideOv();
     toast(_lang==='ar'?'📢 تم النشر للكل!':'📢 Published!', 'ok');
-    document.getElementById('ann-inp-title').value = '';
-    document.getElementById('ann-inp-body').value = '';
-    document.getElementById('ann-inp-img').value = '';
+    clearAnnForm();
     loadAdminAnnouncements();
   } catch(e) { hideOv(); toast('❌ '+e.message, 'err'); }
 }
@@ -3680,8 +3717,11 @@ function checkTemplatesForQuestion(q) {
 
   if (matched.length === 0) return;
   const msgs = document.getElementById('msgs');
-  const lastBot = msgs.querySelector('.bot-msg:last-child');
+  const allBots = msgs.querySelectorAll('.msg.bot');
+  const lastBot = allBots[allBots.length - 1];
   if (!lastBot) return;
+  const bubble = lastBot.querySelector('.bubble');
+  if (!bubble) return;
   const tplDiv = document.createElement('div');
   tplDiv.style.cssText = 'margin-top:10px;display:flex;flex-direction:column;gap:6px';
   tplDiv.innerHTML = `<div style="font-size:11px;color:var(--gold2);font-family:'Almarai',sans-serif;margin-bottom:2px">📄 نماذج متعلقة بسؤالك:</div>` +
@@ -3694,7 +3734,7 @@ function checkTemplatesForQuestion(q) {
         </div>
         <a href="javascript:void(0)" onclick="downloadTemplate('${t.fileData}','${t.fileName}')" style="background:rgba(201,168,76,0.15);border:1px solid rgba(201,168,76,0.3);color:var(--gold2);padding:5px 12px;border-radius:8px;font-family:'Almarai',sans-serif;font-size:11px;text-decoration:none;white-space:nowrap;cursor:pointer">⬇️ تحميل</a>
       </div>`).join('');
-  lastBot.appendChild(tplDiv);
+  bubble.appendChild(tplDiv);
 }
 
 function downloadTemplate(fileData, fileName) {
