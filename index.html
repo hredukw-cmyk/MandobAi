@@ -988,8 +988,17 @@ body{font-family:'Almarai',sans-serif;background:var(--navy);color:#e8edf5;min-h
       <!-- DATA -->
       <div class="sub-panel" id="sub-data">
         <div class="sec-title">📁 <span id="data-title">بيانات التدريب</span></div>
-        
-        <!-- URL FETCHER -->
+
+        <!-- EXPORT CHUNKS -->
+        <div class="card" style="border-color:rgba(34,197,94,0.3);margin-bottom:14px">
+          <div style="font-size:14px;font-weight:700;color:#86efac;margin-bottom:6px">📥 تصدير البيانات للمراجعة</div>
+          <p class="info-note">بينزل كل البيانات كملف txt جاهز للتعديل — بعدين ترفعه تاني بعد ما تحدّثه</p>
+          <div class="arow">
+            <button class="btn btn-gold" onclick="exportChunksAsTxt()">📥 تصدير كل البيانات</button>
+            <button class="btn btn-red" onclick="clearAllChunks()" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#fca5a5">🗑️ مسح كل البيانات</button>
+          </div>
+          <div id="export-chunks-info" style="margin-top:8px;font-size:12px;font-family:'Almarai',sans-serif"></div>
+        </div>
         <div class="card" style="border-color:rgba(201,168,76,0.35)">
           <div style="font-size:14px;font-weight:700;color:var(--gold2);margin-bottom:6px">🌐 جلب محتوى موقع تلقائي</div>
           <p class="info-note">حط رابط أي صفحة حكومية وهيجيب محتواها ويضيفه للبيانات مباشرة</p>
@@ -2292,34 +2301,33 @@ async function confirmSaveExtracted() {
   const text = document.getElementById('img-preview-text').value.trim();
   if (!text) return;
   const infoEl = document.getElementById('img-upload-info');
-  showOv('⏳ جاري التحضير...');
+  showOv('⏳ جاري الحفظ...');
   try {
     const newChunks = chunkText(text);
-    // جيب أحدث نسخة من Firebase مش من الميموري
     const { db, doc, setDoc, getDoc } = await waitFb();
+    // جيب الـ meta بس — مش كل الـ chunks
     const metaSnap = await getDoc(doc(db, 'system', 'chunks'));
-    let freshChunks = [];
-    if (metaSnap.exists()) {
-      const meta = metaSnap.data();
-      for (let i = 0; i < (meta.batches||1); i++) {
-        showOv(`⏳ جاري التحميل... ${i+1}/${meta.batches||1}`);
-        const bSnap = await getDoc(doc(db, 'system', `chunks_${i}`));
-        if (bSnap.exists()) freshChunks = freshChunks.concat(bSnap.data().data||[]);
-      }
+    const meta = metaSnap.exists() ? metaSnap.data() : { count: 0, batches: 0 };
+    const currentBatches = meta.batches || 0;
+    const currentCount = meta.count || 0;
+    // قسّم الـ chunks الجديدة في batches وأضفها بعد الـ batches الموجودة
+    const BATCH = 200;
+    const newBatches = [];
+    for (let i = 0; i < newChunks.length; i += BATCH) newBatches.push(newChunks.slice(i, i + BATCH));
+    for (let i = 0; i < newBatches.length; i++) {
+      showOv(`⏳ جاري الحفظ... ${i+1}/${newBatches.length}`);
+      await setDoc(doc(db, 'system', `chunks_${currentBatches + i}`), { data: newBatches[i] });
     }
-    const combined = [...freshChunks, ...newChunks];
-    const BATCH = 200; const batches = [];
-    for (let i = 0; i < combined.length; i += BATCH) batches.push(combined.slice(i, i + BATCH));
-    await setDoc(doc(db, 'system', 'chunks'), { count: combined.length, batches: batches.length, updatedAt: new Date().toISOString() });
-    for (let i = 0; i < batches.length; i++) {
-      showOv(`⏳ جاري الحفظ... ${i+1}/${batches.length}`);
-      await setDoc(doc(db, 'system', `chunks_${i}`), { data: batches[i] });
-    }
+    await setDoc(doc(db, 'system', 'chunks'), {
+      count: currentCount + newChunks.length,
+      batches: currentBatches + newBatches.length,
+      updatedAt: new Date().toISOString()
+    });
     Object.keys(localStorage).filter(k => k.startsWith('chunks_v_')).forEach(k => localStorage.removeItem(k));
-    _chunks = combined;
+    _chunks = [..._chunks, ...newChunks];
     document.getElementById('img-preview-area').style.display = 'none';
     infoEl.innerHTML = `<span style="color:#86efac">✅ تم الحفظ — ${newChunks.length} قطعة جديدة</span>`;
-    document.getElementById('chunks-info').textContent = _chunks.length + ' chunk';
+    document.getElementById('chunks-info').textContent = (_chunks.length) + ' chunk';
   } catch(e) {
     infoEl.innerHTML = `<span style="color:#fca5a5">❌ ${e.message}</span>`;
   } finally {
@@ -3026,6 +3034,74 @@ function handleImageUpload(input) {
 
 // ── ADMIN: USER QUESTIONS ──
 let _adminQs = [];
+async function clearAllChunks() {
+  if (!confirm('هتمسح كل البيانات نهائياً — متأكد؟')) return;
+  showOv('⏳ جاري المسح...');
+  try {
+    const { db, doc, setDoc } = await waitFb();
+    // امسح كل الـ batches
+    const currentBatches = Math.ceil(_chunks.length / 200) || 1;
+    for (let i = 0; i < currentBatches; i++) {
+      await setDoc(doc(db, 'system', `chunks_${i}`), { data: [] });
+    }
+    await setDoc(doc(db, 'system', 'chunks'), { count: 0, batches: 1, updatedAt: new Date().toISOString() });
+    Object.keys(localStorage).filter(k => k.startsWith('chunks_v_')).forEach(k => localStorage.removeItem(k));
+    _chunks = [];
+    document.getElementById('chunks-info').textContent = '0 chunk';
+    document.getElementById('export-chunks-info').innerHTML = '<span style="color:#86efac">✅ تم مسح كل البيانات</span>';
+    hideOv();
+    toast('✅ تم مسح كل البيانات', 'ok');
+  } catch(e) {
+    hideOv();
+    toast('❌ ' + e.message, 'err');
+  }
+}
+
+async function exportChunksAsTxt() {
+  const infoEl = document.getElementById('export-chunks-info');
+  infoEl.innerHTML = '<span style="color:var(--gold2)">⏳ جاري التصدير...</span>';
+  try {
+    // جيب أحدث نسخة من Firebase
+    const { db, doc, getDoc } = await waitFb();
+    const metaSnap = await getDoc(doc(db, 'system', 'chunks'));
+    let allChunks = [];
+    if (metaSnap.exists()) {
+      const meta = metaSnap.data();
+      for (let i = 0; i < (meta.batches||1); i++) {
+        const bSnap = await getDoc(doc(db, 'system', `chunks_${i}`));
+        if (bSnap.exists()) allChunks = allChunks.concat(bSnap.data().data||[]);
+      }
+    }
+    if (!allChunks.length) { infoEl.innerHTML = '<span style="color:#fca5a5">مفيش بيانات</span>'; return; }
+
+    // رتّبهم مع فاصل واضح بين كل chunk
+    const lines = [
+      `# بيانات المرشد للمعاملات الحكومية`,
+      `# تاريخ التصدير: ${new Date().toLocaleDateString('ar-KW')}`,
+      `# عدد القطع: ${allChunks.length}`,
+      `# تعليمات: عدّل على المعلومات القديمة أو الغلط، احذف السطر كله لو مش محتاجه`,
+      `# بعد التعديل: ارفع الملف من "رفع بيانات" وامسح القديم`,
+      ``,
+      ...allChunks.flatMap((c, i) => [
+        `${'='.repeat(60)}`,
+        `# قطعة ${i+1}`,
+        `${'='.repeat(60)}`,
+        typeof c === 'string' ? c : (c.text || JSON.stringify(c)),
+        ``
+      ])
+    ];
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `almurshid_data_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    infoEl.innerHTML = `<span style="color:#86efac">✅ تم تصدير ${allChunks.length} قطعة</span>`;
+  } catch(e) {
+    infoEl.innerHTML = `<span style="color:#fca5a5">❌ ${e.message}</span>`;
+  }
+}
+
 async function loadAdminQuestions() {
   const el = document.getElementById('admin-questions-list');
   el.innerHTML = `<div style="color:var(--gray);font-family:'Almarai',sans-serif;font-size:13px">جاري التحميل...</div>`;
